@@ -58,3 +58,29 @@ test("refresh keeps focus in the task region when the focused task disappears", 
   await click(listeners, "refresh");
   assert.equal(document.activeElement, root);
 });
+
+test("keyboard activation preserves navigation focus and ignores repeated pending actions", async (t) => {
+  const { node, listeners, network, requests } = await browser(t);
+  const root = domContainer(node("#navigation"));
+  const selector = '[data-action="view"][data-view="activity"]';
+  const target = root.querySelector(selector);
+  target.focus();
+  const entered = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  network.handler = async (path) => {
+    if (path === "/v1/boards") {
+      entered.resolve();
+      return response.promise;
+    }
+  };
+  const activate = () => listeners.get("click")({ target: { closest: () => target }, preventDefault() {} });
+  const pending = activate();
+  await entered.promise;
+  const count = requests.length;
+  await activate();
+  assert.equal(requests.length, count, "repeated activation must not start another refresh");
+  response.resolve({ ok: true, json: async () => ({ ok: true, data: { boards: [] } }) });
+  await pending;
+  assert.equal(node("#breadcrumb-view").textContent, "Activity");
+  assert.equal(document.activeElement, root.querySelector(selector));
+});

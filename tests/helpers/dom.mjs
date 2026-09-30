@@ -16,10 +16,23 @@ export function domContainer(root) {
         isConnected: true,
         attributes,
         dataset: Object.fromEntries(Object.entries(attributes).filter(([key]) => key.startsWith("data-")).map(([key, value]) => [key.slice(5), value])),
+        get ariaDisabled() { return attributes["aria-disabled"] ?? null; },
+        set ariaDisabled(value) {
+          if (value == null) delete attributes["aria-disabled"];
+          else attributes["aria-disabled"] = String(value);
+        },
         getAttribute: (key) => attributes[key] ?? null,
         setAttribute: (key, value) => { attributes[key] = String(value); },
         focus() { document.activeElement = this; },
       };
+      let disabled = false;
+      Object.defineProperty(control, "disabled", {
+        get: () => disabled,
+        set(value) {
+          disabled = value;
+          if (value && document.activeElement === control) document.activeElement = document.body;
+        },
+      });
       return control;
     });
   };

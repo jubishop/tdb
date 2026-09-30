@@ -285,16 +285,17 @@ async function action(name, target) {
 
 document.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
-  if (!target || target.disabled || target.getAttribute?.("aria-disabled") === "true") return;
+  if (!target || target.disabled || target.ariaDisabled === "true") return;
   event.preventDefault();
   const moving = ["move-up", "move-down"].includes(target.dataset.action);
-  if (!moving) target.disabled = true;
+  const previousDisabled = target.ariaDisabled;
+  if (!moving) target.ariaDisabled = "true";
   try {
     await action(target.dataset.action, target);
   } catch (error) {
     showError(error);
   } finally {
-    if (!moving) target.disabled = false;
+    if (!moving) target.ariaDisabled = previousDisabled;
   }
 });
 
