@@ -24,6 +24,10 @@ export function createPanels(state, refresh) {
   let request = 0;
   let modalSubmit;
 
+  modal.addEventListener("cancel", (event) => {
+    if (modal.querySelector("form")?.inert) event.preventDefault();
+  });
+
   function dirty() {
     const form = drawer.querySelector("#issue-form");
     return (

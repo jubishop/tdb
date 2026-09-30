@@ -98,14 +98,15 @@ async function refresh() {
       allIssues(new URLSearchParams({ status: "in_review" }), signal),
     ]);
     if (generation !== refreshID) return;
-    if (!boards.some((b) => b.id === state.boardID))
-      state.boardID = (boards.find((b) => b.is_builtin) || boards[0])?.id || "";
+    const boardID = boards.some((b) => b.id === state.boardID)
+      ? state.boardID
+      : (boards.find((b) => b.is_builtin) || boards[0])?.id || "";
     let issues = [];
     let boardIssues = [];
     const params = filterParams(state.filters);
-    if (state.view === "board" && state.boardID) {
+    if (state.view === "board" && boardID) {
       const data = await api(
-        `/boards/${state.boardID}?include_closed=${state.filters.include_closed}`,
+        `/boards/${boardID}?include_closed=${state.filters.include_closed}`,
         { signal },
       );
       boardIssues = data.issues;
@@ -132,6 +133,7 @@ async function refresh() {
     }
     if (generation !== refreshID) return;
     Object.assign(state, {
+      boardID,
       boards,
       monitor,
       sessions,
@@ -329,6 +331,9 @@ document.addEventListener("dragstart", (event) => {
   const card = event.target.closest(".task-card");
   if (!card || busy) return;
   dragID = card.dataset.id;
+  refreshID++;
+  refreshController?.abort();
+  queuedRefresh = true;
   event.dataTransfer.setData("text/plain", dragID);
   event.dataTransfer.effectAllowed = "move";
   card.classList.add("dragging");
