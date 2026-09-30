@@ -69,7 +69,7 @@ func TestExplicitBackendCompatibilityAndOwnership(t *testing.T) {
 	}
 }
 func TestRejectRemoteAndAmbiguousURLs(t *testing.T) {
-	for _, s := range []string{"https://127.0.0.1:80", "http://example.com", "http://127.0.0.1/path", "http://user@localhost", "http://localhost?secret=x", "http://localhost#x", "ftp://localhost"} {
+	for _, s := range []string{"https://127.0.0.1:80", "http://example.com", "http://127.0.0.1/path", "http://user@localhost", "http://localhost?secret=x", "http://localhost?", "http://localhost/?", "http://localhost#x", "ftp://localhost"} {
 		if _, err := ValidateURL(s); err == nil {
 			t.Errorf("accepted %s", s)
 		}

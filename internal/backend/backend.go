@@ -53,7 +53,7 @@ func ValidateURL(raw string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid td API URL: %w", err)
 	}
 	ip := net.ParseIP(u.Hostname())
-	if u.Scheme != "http" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") || (u.Hostname() != "localhost" && (ip == nil || !ip.IsLoopback())) {
+	if u.Scheme != "http" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || (u.Hostname() != "localhost" && (ip == nil || !ip.IsLoopback())) {
 		return nil, fmt.Errorf("td API URL must be a loopback HTTP address, such as http://127.0.0.1:8080")
 	}
 	u.Path = ""

@@ -64,6 +64,33 @@ Bluemonday for HTML sanitization. Their versions preserve the safe rendering
 behavior of the extracted browser. Go's standard library supplies the HTTP
 server, proxy, process lifecycle, embedding, and CLI flags.
 
+### Browser verification
+
+Use a disposable td project inside the active checkout for browser checks.
+Create its `.td-root` marker before running `td init`. Without that marker,
+td can resolve a nested directory to the parent project's database even when
+`--work-dir` names the nested directory.
+
+From the repository root, run these commands in a POSIX shell:
+
+```sh
+mkdir -p .cache/browser-check
+browser_project=$(mktemp -d "$PWD/.cache/browser-check/project.XXXXXX")
+printf '.\n' > "$browser_project/.td-root"
+td --work-dir "$browser_project" init
+td --work-dir "$browser_project" info --json
+make build
+dist/tdb --work-dir "$browser_project" --no-open
+```
+
+Confirm that `base_dir` from `td info` and the startup `project` path both
+match the disposable directory before creating test tasks. Use a compatible
+td build, selecting it with `--td` if needed. Open the printed browser URL,
+check the changed interaction, and read back saved values through td's public
+CLI or HTTP API. Keep screenshots and other check output under `.cache/`.
+Press Ctrl+C in the terminal that started this tdb process when finished;
+stop only processes started for the check.
+
 ## Runtime and toolchain versions
 
 Declare the supported versions of the runtimes, compilers, and build tools
