@@ -27,10 +27,12 @@ export function element() {
 let sequence = 0;
 
 // Run the application with only browser and HTTP boundaries faked.
-export async function browser(t, { includeClosed = false } = {}) {
+export async function browser(t, { includeClosed = false, hash = "#board" } = {}) {
   const network = {};
   const nodes = new Map();
   const listeners = new Map();
+  const windowListeners = new Map();
+  const dialogs = { confirm: false };
   const requests = [];
   const streams = [];
   const ready = Promise.withResolvers();
@@ -55,10 +57,14 @@ export async function browser(t, { includeClosed = false } = {}) {
       querySelectorAll: () => [],
       addEventListener: (name, listener) => listeners.set(name, listener),
     },
-    window: { addEventListener() {} },
-    history: { replaceState() {}, pushState() {} },
+    window: { addEventListener: (name, listener) => windowListeners.set(name, listener) },
+    history: {
+      replaceState(_state, _title, url) { location.hash = url; },
+      pushState(_state, _title, url) { location.hash = url; },
+    },
+    confirm: () => dialogs.confirm,
     CSS: { escape: (value) => value },
-    location: { hash: "#board" },
+    location: { hash },
     localStorage: {
       getItem: () => JSON.stringify({ filters: { include_closed: includeClosed } }),
       setItem() {},
@@ -109,5 +115,5 @@ export async function browser(t, { includeClosed = false } = {}) {
   t.mock.method(globalThis, "setTimeout", (...args) => setTimer(...args).unref());
   await import(`../../internal/web/assets/app.js?test=${sequence++}`);
   await ready.promise;
-  return { node, listeners, requests, issues, network, streams };
+  return { node, listeners, windowListeners, dialogs, requests, issues, network, streams };
 }

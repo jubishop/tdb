@@ -26,6 +26,7 @@ const panels = createPanels(state, refresh);
 let projectKey = "";
 let refreshID = 0;
 let refreshController;
+let navigationID = 0;
 let filterTimer;
 let dragID;
 let busy = false;
@@ -157,26 +158,43 @@ async function refresh() {
 }
 
 async function route() {
-  const [view, query] = location.hash.slice(1).split("?");
-  if (["board", "list", "reviews", "activity"].includes(view))
-    state.view = view;
+  const [requestedView, query] = location.hash.slice(1).split("?");
+  if (requestedView && !["board", "list", "reviews", "activity"].includes(requestedView))
+    return refresh();
+  const generation = ++navigationID;
+  const view = requestedView || state.view;
   const id = new URLSearchParams(query).get("issue");
+  const restoreLocation = () => {
+    const currentID = state.detail?.issue.id;
+    history.replaceState(null, "", `#${state.view}${currentID ? `?issue=${currentID}` : ""}`);
+  };
   let routeError;
   if (id && state.detail?.issue.id !== id) {
     try {
       const opened = await panels.open(id);
-      if (!opened) return;
+      if (generation !== navigationID) return;
+      if (!opened) {
+        restoreLocation();
+        return;
+      }
     } catch (error) {
+      if (generation !== navigationID) return;
       panels.close();
-      history.replaceState(null, "", `#${state.view}`);
+      history.replaceState(null, "", `#${view}`);
       routeError = error;
     }
-  } else if (!id && state.detail && !state.editor) panels.close();
+  } else if (!id && !panels.close()) {
+    restoreLocation();
+    return;
+  }
+  state.view = view;
   await refresh();
-  if (routeError) toast(routeError.message);
+  if (routeError && generation === navigationID) toast(routeError.message);
 }
 
 async function action(name, target) {
+  if (["view", "board", "task", "close-task", "new-task"].includes(name))
+    navigationID++;
   if (name === "view" || name === "board") {
     if (!panels.close()) return;
     if (name === "board") state.boardID = target.dataset.id;

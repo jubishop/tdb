@@ -46,7 +46,26 @@ due date, deferral, and the minor-task flag.
 
 Text search is the default. Select **TDQ** to enter an explicit query. Type and
 priority filters apply to task views. Enable **Closed** to include completed
-tasks. Browser preferences are stored locally in the browser.
+tasks.
+
+## Saved preferences and bookmarks
+
+Use the same fixed port on each launch to retain your selected view, board,
+filters, and theme, and to reuse task bookmarks:
+
+```sh
+tdb --port 8080
+```
+
+Open the printed `http://127.0.0.1:8080` address in the same browser profile.
+Browser storage belongs to the full address, including its host and port.
+Using `localhost` instead of `127.0.0.1`, changing the port, or changing the
+browser profile gives you separate preferences. Clearing site data removes
+the saved preferences.
+
+The default `tdb` command selects an available port on each launch. Settings
+saved at a previous port remain there, but are not available at the new one.
+Use a different fixed port for each workspace you run at the same time.
 
 ## Live updates and conflicts
 
@@ -89,3 +108,9 @@ buttons in the task panel.
 The server embeds the files in `internal/web/assets/`. Build with `make build`; there is no frontend build step. Rebuild and restart the binary after
 editing these files. `td serve` supplies the API and `td monitor` supplies the terminal interface.
 Markdown rendering and the browser request boundary belong to tdb.
+
+Preference storage decision (2026-09-30): retain automatic port assignment as
+the default and use an explicit fixed port for persistence. This keeps browser
+preferences in browser storage and avoids a port registry or additional
+server-side storage. The tradeoff is that persistence across launches requires
+the user to choose a stable port.

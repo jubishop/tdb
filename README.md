@@ -25,6 +25,10 @@ tdb --td /path/to/compatible/td
 tdb --api-url http://127.0.0.1:54321
 ```
 
+Use the same `--port` on each launch to keep browser preferences and task
+bookmarks. The default selects an available port, which can change between
+launches. See [saved preferences and bookmarks](docs/browser.md#saved-preferences-and-bookmarks).
+
 `tdb` uses td's project resolution, including subdirectories, `.td-root`, and
 Git worktrees. It reuses a compatible server when possible. Otherwise, it
 starts a loopback-only `td serve` with a random bearer token. Press Ctrl+C to
