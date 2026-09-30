@@ -459,14 +459,8 @@ async function start() {
     else if (form.elements[key]) form.elements[key].value = value;
   }
   await route();
-  const stream = new EventSource("/v1/events");
   let eventToken;
   let eventTimer;
-  stream.onopen = () => {
-    connection(true);
-    refresh();
-  };
-  stream.onerror = () => connection(false);
   const onEvent = (event) => {
     const payload = JSON.parse(event.data);
     if (payload.change_token === eventToken) return;
@@ -474,8 +468,22 @@ async function start() {
     clearTimeout(eventTimer);
     eventTimer = setTimeout(refresh, 150);
   };
-  stream.addEventListener("refresh", onEvent);
-  stream.addEventListener("ping", onEvent);
+  function connectEvents() {
+    const stream = new EventSource("/v1/events");
+    stream.onopen = () => {
+      connection(true);
+      refresh();
+    };
+    stream.onerror = () => {
+      connection(false);
+      // HTTP errors can close the stream permanently instead of retrying.
+      if (stream.readyState === EventSource.CLOSED)
+        setTimeout(connectEvents, 2000);
+    };
+    stream.addEventListener("refresh", onEvent);
+    stream.addEventListener("ping", onEvent);
+  }
+  connectEvents();
 }
 
 start().catch(showError);

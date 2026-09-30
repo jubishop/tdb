@@ -16,6 +16,7 @@ import {
   normalized,
   formValues,
   toast,
+  replaceContents,
 } from "./ui.js";
 
 export function createPanels(state, refresh) {
@@ -54,7 +55,7 @@ export function createPanels(state, refresh) {
     return true;
   }
   function showDrawer(html) {
-    drawer.innerHTML = html;
+    replaceContents(drawer, html);
     drawer.hidden = false;
     document.body.classList.add("drawer-open");
   }

@@ -72,6 +72,28 @@ export function options(values, selected) {
     )
     .join("");
 }
+
+export function replaceContents(root, html) {
+  const active = document.activeElement;
+  const focused = active !== root && root.contains(active) ? active : null;
+  const identity = focused
+    ? ["id", "name", "data-action", "data-id", "data-view", "data-transition", "href"]
+        .filter((key) => focused.getAttribute(key) !== null)
+        .map((key) => `[${key}="${CSS.escape(focused.getAttribute(key))}"]`)
+        .join("")
+    : "";
+  root.innerHTML = html;
+  if (!focused) return;
+  const replacement = identity
+    ? root.querySelector(focused.tagName.toLowerCase() + identity)
+    : null;
+  if (replacement) replacement.focus({ preventScroll: true });
+  else {
+    root.tabIndex = -1;
+    root.focus({ preventScroll: true });
+  }
+}
+
 export function issueLink(id, title) {
   return `<button class="text-link" data-action="task" data-id="${esc(id)}">${esc(title || id)}</button>`;
 }

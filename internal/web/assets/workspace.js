@@ -8,27 +8,29 @@ import {
   issueLink,
   sessionName,
   statuses,
+  replaceContents,
 } from "./ui.js";
 
 export function navigation(state) {
   const reviewCount = state.reviewIssues.length;
-  document.querySelector("#navigation").innerHTML = [
-    "board",
-    "list",
-    "reviews",
-    "activity",
-  ]
-    .map(
-      (view) =>
-        `<button class="nav-item ${state.view === view ? "active" : ""}" data-action="view" data-view="${view}" ${state.view === view ? 'aria-current="page"' : ""}>${icon(view)}<span>${view[0].toUpperCase() + view.slice(1)}</span>${view === "reviews" && reviewCount ? `<span class="nav-count">${reviewCount}</span>` : ""}</button>`,
-    )
-    .join("");
-  document.querySelector("#boards").innerHTML = state.boards
-    .map(
-      (board) =>
-        `<button class="nav-item board-nav ${board.id === state.boardID && state.view === "board" ? "active" : ""}" data-action="board" data-id="${esc(board.id)}"><span class="board-symbol">▦</span><span class="truncate">${esc(board.name)}</span></button>`,
-    )
-    .join("");
+  replaceContents(
+    document.querySelector("#navigation"),
+    ["board", "list", "reviews", "activity"]
+      .map(
+        (view) =>
+          `<button class="nav-item ${state.view === view ? "active" : ""}" data-action="view" data-view="${view}" ${state.view === view ? 'aria-current="page"' : ""}>${icon(view)}<span>${view[0].toUpperCase() + view.slice(1)}</span>${view === "reviews" && reviewCount ? `<span class="nav-count">${reviewCount}</span>` : ""}</button>`,
+      )
+      .join(""),
+  );
+  replaceContents(
+    document.querySelector("#boards"),
+    state.boards
+      .map(
+        (board) =>
+          `<button class="nav-item board-nav ${board.id === state.boardID && state.view === "board" ? "active" : ""}" data-action="board" data-id="${esc(board.id)}"><span class="board-symbol">▦</span><span class="truncate">${esc(board.name)}</span></button>`,
+      )
+      .join(""),
+  );
   const board = state.boards.find((b) => b.id === state.boardID);
   const title =
     state.view === "board"
@@ -142,20 +144,14 @@ function activityView(state) {
 export function renderWorkspace(state) {
   navigation(state);
   const content = document.querySelector("#content");
-  const focused = content.contains(document.activeElement)
-    ? document.activeElement
-    : null;
-  const focusedID = focused?.dataset.id;
-  content.innerHTML =
+  replaceContents(
+    content,
     state.view === "board"
       ? boardView(state)
       : state.view === "activity"
         ? activityView(state)
-        : listView(state, state.view === "reviews");
-  if (focusedID)
-    content
-      .querySelector(`[data-action="task"][data-id="${CSS.escape(focusedID)}"]`)
-      ?.focus({ preventScroll: true });
+        : listView(state, state.view === "reviews"),
+  );
   document.querySelector("#result-count").textContent =
     state.view === "activity"
       ? `${state.monitor?.activity?.length || 0} recent events`
