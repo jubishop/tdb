@@ -244,6 +244,8 @@ export function createPanels(state, refresh, boardPosition) {
   }
 
   function newTask() {
+    if (!state.project)
+      throw new Error("The workspace is still connecting. Try creating a task again when it is ready.");
     if (!mayLeave()) return false;
     request++;
     state.detail = null;

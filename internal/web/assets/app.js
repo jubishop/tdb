@@ -309,6 +309,7 @@ document.addEventListener("submit", async (event) => {
     form.querySelector('[type="submit"]') || form.querySelector("button");
   if (button?.disabled) return;
   const focused = document.activeElement?.form === form ? document.activeElement : null;
+  const issueID = state.detail?.issue.id;
   let failed = false;
   if (button) button.disabled = true;
   form.inert = true;
@@ -323,8 +324,13 @@ document.addEventListener("submit", async (event) => {
   } finally {
     form.inert = false;
     if (button) button.disabled = false;
-    if (failed && focused?.isConnected && document.activeElement === document.body)
-      focused.focus({ preventScroll: true });
+    if (focused && document.activeElement === document.body) {
+      const field = { "comment-form": "comment", "dependency-form": "depends_on" }[form.id];
+      const replacement = !failed && field && issueID === state.detail?.issue.id
+        ? document.querySelector("#drawer").querySelector(`[name="${field}"]`)
+        : null;
+      (replacement || (focused.isConnected ? focused : null))?.focus({ preventScroll: true });
+    }
   }
 });
 
@@ -349,6 +355,7 @@ document.addEventListener("input", (event) => {
   clearTimeout(lookupTimer);
   const text = input.value;
   lookupTimer = setTimeout(async () => {
+    if (!input.isConnected || input.value !== text) return;
     try {
       const params = new URLSearchParams({
         search: text,
@@ -363,7 +370,7 @@ document.addEventListener("input", (event) => {
         .map((i) => `<option value="${esc(i.id)}">${esc(i.title)}</option>`)
         .join("");
     } catch (error) {
-      showError(error);
+      if (input.isConnected && input.value === text) showError(error);
     }
   }, 200);
 });

@@ -228,3 +228,40 @@ for (const moveFocus of [false, true]) {
     assert.equal(app.drawer.querySelector("#detail-error").textContent, "Dependency not found");
   });
 }
+
+for (const [kind, field] of [["comment", "comment"], ["dependency", "depends_on"]]) {
+  for (const moveFocus of [false, true]) {
+    test(`successful ${kind} submission retains keyboard focus without overriding moved focus (${moveFocus})`, async (t) => {
+      const app = await workspace(t);
+      const input = app.drawer.querySelector(`[name="${field}"]`);
+      input.value = kind === "comment" ? "Review note" : "td-second";
+      const button = element();
+      const form = {
+        id: `${kind}-form`, elements: { [field]: input },
+        querySelector: (selector) => selector === ".form-error" ? null : button,
+        querySelectorAll: () => [],
+        reset() { input.value = ""; },
+        set inert(value) {
+          if (value && document.activeElement === input) document.activeElement = document.body;
+        },
+      };
+      input.form = form;
+      input.focus();
+      const other = app.node("#search");
+      app.network.handler = async (path, options) => {
+        if (options.method === "POST") {
+          if (moveFocus) other.focus();
+          return success({});
+        }
+        if (path === `/v1/issues/${app.issue.id}`) return success({
+          issue: app.issue, dependencies: [], blocked_by: [], comments: [], logs: [],
+        });
+      };
+      await app.listeners.get("submit")({ target: form, preventDefault() {} });
+      const replacement = app.drawer.querySelector(`[name="${field}"]`);
+      assert.notEqual(replacement, input, "the successful reload replaces the submitted form");
+      assert.equal(document.activeElement, moveFocus ? other : replacement);
+      assert.equal(app.node("#toast").textContent, kind === "comment" ? "Comment added" : "Dependency added");
+    });
+  }
+}

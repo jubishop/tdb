@@ -100,6 +100,8 @@ loading task** if the saved task cannot be displayed.
 Reloading or leaving the page also warns while a dialog action is pending,
 even when its fields are unchanged. After a failed save, keyboard focus
 returns to the submitted control if you have not moved to another control.
+After a successful comment or dependency save, focus returns to that form's
+input if you are still on the same task and have not moved focus elsewhere.
 
 Writes use the existing HTTP API's shared web session and appear in td's action
 history. **Close without review** is for administrative closures such as
