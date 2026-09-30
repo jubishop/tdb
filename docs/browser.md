@@ -95,6 +95,9 @@ save explicitly. A further concurrent change triggers another comparison.
 Changed dialog fields also receive draft protection. Closing a board or review
 dialog with Escape, Cancel, or its close button asks before discarding edits.
 Leaving or reloading the page also warns when a dialog contains unsaved edits.
+Saving a board shows that board and keeps the task panel and its unsaved draft
+open. The draft can belong to a new task, an existing task, a comment, or a
+dependency.
 
 Task edits, comments, and dependency saves keep their panel open until the
 write finishes. You can leave after success, or retry after an error. A
@@ -164,3 +167,7 @@ Moves use the visible order within the task's current status column.
 Blocked summary decision (2026-09-30): the user chose to retain the existing
 count and label it **Blocked or waiting**. This keeps dependency-blocked work
 visible while distinguishing the summary from the Board's Blocked status column.
+
+Board-save draft decision (2026-09-30): the user chose to keep the task draft
+open when saving a board. This preserves unfinished task work while showing
+the saved board, even when that task does not match the board's query.

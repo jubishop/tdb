@@ -402,8 +402,9 @@ export function createPanels(state, refresh, boardPosition) {
         return async () => {
           state.boardID = data.board.id;
           state.view = "board";
+          const issueID = state.detail?.issue.id;
+          history.replaceState(null, "", `#board${issueID ? `?issue=${issueID}` : ""}`);
           await refresh();
-          location.hash = "board";
           toast(board ? "Board updated" : "Board created");
         };
       },
