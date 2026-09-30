@@ -9,6 +9,42 @@ import unittest
 SOURCE = Path(__file__).resolve().parents[1]
 
 class ApplicationChecks(unittest.TestCase):
+    def test_make_targets_enforce_supported_go_before_work(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            shutil.copy2(SOURCE / "Makefile", root / "Makefile")
+            tools = root / "tools"
+            tools.mkdir()
+            go = tools / "go"
+            go.write_text('''#!/usr/bin/env python3
+import os, sys
+from pathlib import Path
+if sys.argv[1:] == ["env", "GOVERSION"]:
+    print(os.environ["FAKE_GO_VERSION"])
+else:
+    with Path("calls").open("a") as stream:
+        stream.write(" ".join(sys.argv[1:]) + " GOWORK=" + os.environ.get("GOWORK", "") + "\\n")
+    if sys.argv[1] == "build":
+        Path("dist").mkdir(exist_ok=True)
+        Path("dist/tdb").write_text("test executable")
+''')
+            go.chmod(0o755)
+            env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"])
+            for target in ("build", "install", "test"):
+                for version in ("go1.26.5", "go1.28.0"):
+                    with self.subTest(target=target, version=version):
+                        result = subprocess.run(["make", target, "PREFIX=" + str(root / "prefix")], cwd=root,
+                                                env=dict(env, FAKE_GO_VERSION=version), capture_output=True, text=True)
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn("Go 1.27.x", result.stderr)
+                        self.assertFalse((root / "calls").exists())
+                        self.assertFalse((root / "prefix/bin/tdb").exists())
+            for target in ("build", "install", "test"):
+                subprocess.run(["make", target, "PREFIX=" + str(root / "prefix")], cwd=root,
+                               env=dict(env, FAKE_GO_VERSION="go1.27.1"), check=True, capture_output=True)
+            self.assertEqual((root / "prefix/bin/tdb").read_text(), "test executable")
+            self.assertIn("test -race . ./internal/... GOWORK=off", (root / "calls").read_text())
+
     def test_modes_and_failures(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

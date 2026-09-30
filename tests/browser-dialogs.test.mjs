@@ -72,6 +72,20 @@ test("a pending dialog save also blocks browser history navigation", async (t) =
   assert.equal(modal.open, true);
 });
 
+test("a pending dialog action warns before reload even without changed fields", async (t) => {
+  const { modal, windowListeners, query } = await draftDialog(t);
+  query.value = query.defaultValue;
+  const form = { inert: true };
+  modal.querySelector = () => form;
+  const pending = new Event("beforeunload", { cancelable: true });
+  windowListeners.get("beforeunload")(pending);
+  assert.equal(pending.defaultPrevented, true);
+  form.inert = false;
+  const idle = new Event("beforeunload", { cancelable: true });
+  windowListeners.get("beforeunload")(idle);
+  assert.equal(idle.defaultPrevented, false);
+});
+
 test("review attribution changes count as drafts, including implicit default selections", async (t) => {
   const { modal, windowListeners, query } = await draftDialog(t);
   query.value = query.defaultValue;

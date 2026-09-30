@@ -93,6 +93,9 @@ Task edits, comments, and dependency saves keep their panel open until the
 write finishes. You can leave after success, or retry after an error. A
 successful write is reported separately from a failed reload; use **Retry
 loading task** if the saved task cannot be displayed.
+Reloading or leaving the page also warns while a dialog action is pending,
+even when its fields are unchanged. After a failed save, keyboard focus
+returns to the submitted control if you have not moved to another control.
 
 Writes use the existing HTTP API's shared web session and appear in td's action
 history. **Close without review** is for administrative closures such as

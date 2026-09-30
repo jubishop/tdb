@@ -194,3 +194,37 @@ for (const [formID, field, value, endpoint, message] of [
     assert.equal(drawer.querySelector("#detail-error").textContent, "Detail reload unavailable");
   });
 }
+
+for (const moveFocus of [false, true]) {
+  test(`failed submission restores keyboard focus unless it moved elsewhere (${moveFocus})`, async (t) => {
+    const app = await workspace(t);
+    const input = app.drawer.querySelector('[name="depends_on"]');
+    input.value = "td-missing";
+    input.focus();
+    const button = element();
+    let inert = false;
+    const form = {
+      id: "dependency-form", isConnected: true,
+      elements: { depends_on: input },
+      contains: (control) => control === input || control === button,
+      querySelector: (selector) => selector === ".form-error" ? null : button,
+      querySelectorAll: () => [],
+      get inert() { return inert; },
+      set inert(value) {
+        inert = value;
+        if (value && this.contains(document.activeElement)) document.activeElement = document.body;
+      },
+    };
+    input.form = form;
+    const other = app.node("#search");
+    app.network.handler = async () => {
+      if (moveFocus) other.focus();
+      return { ok: false, status: 404, json: async () => ({ ok: false, error: { message: "Dependency not found" } }) };
+    };
+    await app.listeners.get("submit")({ target: form, preventDefault() {} });
+    assert.equal(document.activeElement, moveFocus ? other : input);
+    assert.equal(input.value, "td-missing");
+    assert.equal(form.inert, false);
+    assert.equal(app.drawer.querySelector("#detail-error").textContent, "Dependency not found");
+  });
+}

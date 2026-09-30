@@ -45,6 +45,7 @@ CI selects it with setup-go. Application checks also use Node.js 24.x and its
 built-in test runner to exercise browser events and API requests without npm
 dependencies. `bin/check-app` rejects unsupported Go and Node.js versions before
 application validation starts. Building and running tdb does not need Node.js.
+The Make targets also check Go before building, installing, or testing.
 
 - `make build`: compile to `dist/tdb`.
 - `make install`: build and install to `~/.local/bin/tdb`.

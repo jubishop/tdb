@@ -256,6 +256,8 @@ document.addEventListener("submit", async (event) => {
   const button =
     form.querySelector('[type="submit"]') || form.querySelector("button");
   if (button?.disabled) return;
+  const focused = document.activeElement?.form === form ? document.activeElement : null;
+  let failed = false;
   if (button) button.disabled = true;
   form.inert = true;
   form.querySelectorAll(".form-error").forEach((node) => {
@@ -264,10 +266,13 @@ document.addEventListener("submit", async (event) => {
   try {
     await panels.submit(form);
   } catch (error) {
+    failed = true;
     showError(error, form);
   } finally {
     form.inert = false;
     if (button) button.disabled = false;
+    if (failed && focused?.isConnected && document.activeElement === document.body)
+      focused.focus({ preventScroll: true });
   }
 });
 

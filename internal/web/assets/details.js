@@ -43,8 +43,11 @@ export function createPanels(state, refresh) {
     });
   }
   function mayCloseModal() {
-    return !modal.querySelector("form")?.inert &&
+    return !modalBusy() &&
       (!modalDirty() || confirm("Discard your unsaved dialog changes?"));
+  }
+  function modalBusy() {
+    return Boolean(modal.open && modal.querySelector("form")?.inert);
   }
   function drawerDirty() {
     const form = drawer.querySelector("#issue-form");
@@ -59,14 +62,14 @@ export function createPanels(state, refresh) {
     );
   }
   function dirty() {
-    return drawerBusy() || drawerDirty() || modalDirty();
+    return drawerBusy() || modalBusy() || drawerDirty() || modalDirty();
   }
   function drawerBusy() {
     return Boolean(drawer.querySelector("form[inert]"));
   }
   function mayLeave() {
     if (drawerBusy()) return false;
-    if (modal.open && modal.querySelector("form")?.inert) return false;
+    if (modalBusy()) return false;
     if (dirty() && !confirm("Discard your unsaved draft?")) return false;
     if (modal.open) modal.close();
     return true;
