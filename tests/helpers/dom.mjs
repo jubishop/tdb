@@ -5,7 +5,7 @@ export function domContainer(root) {
   let markup = root.innerHTML || "";
   let controls = [];
   const parse = () => {
-    controls = [...markup.matchAll(/<(button|input|textarea|div)\b([^>]*)>/g)].map((match) => {
+    controls = [...markup.matchAll(/<(button|input|textarea|div|p)\b([^>]*)>/g)].map((match) => {
       const attributes = Object.fromEntries([...match[2].matchAll(/([\w-]+)="([^"]*)"/g)].map((entry) => [entry[1], entry[2]]));
       const control = {
         ...element(),

@@ -65,6 +65,7 @@ function showError(error, form) {
   if (error.name === "AbortError") return;
   const local =
     form?.querySelector(".form-error") ||
+    (document.querySelector("#modal").open && document.querySelector("#modal").querySelector(".form-error")) ||
     document.querySelector("#drawer:not([hidden]) #detail-error");
   const node = local || document.querySelector("#error-banner");
   node.textContent =
@@ -402,9 +403,11 @@ document.addEventListener("drop", async (event) => {
   busy = true;
   clearDrop();
   let moveError;
+  let statusChanged = false;
   try {
     if (!issue || targetID === id) return;
     const toStatus = column.dataset.status;
+    let boardIssues = board.boardIssues;
     if (issue.status !== toStatus) {
       const transition = dropAction(issue.status, toStatus);
       if (!transition) {
@@ -418,8 +421,15 @@ document.addEventListener("drop", async (event) => {
         body: {},
         revision: issue.revision,
       });
+      statusChanged = true;
+      const data = await api(`/boards/${board.boardID}?include_closed=${board.includeClosed}`);
+      boardIssues = data.issues;
+      if (!boardIssues.some((row) => row.issue.id === id)) {
+        toast("Task updated; it no longer matches this board.");
+        return;
+      }
     }
-    const ordered = board.boardIssues
+    const ordered = boardIssues
       .map((row) => row.issue.id)
       .filter((item) => item !== id);
     let beforeID = targetID;
@@ -442,7 +452,9 @@ document.addEventListener("drop", async (event) => {
     });
     toast("Board updated");
   } catch (error) {
-    moveError = error;
+    moveError = statusChanged
+      ? new Error(`Task status changed, but its board position could not be updated. ${error.message}`)
+      : error;
   } finally {
     busy = false;
     queuedRefresh = false;

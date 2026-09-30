@@ -93,7 +93,7 @@ function card(issue, state) {
 
 function boardView(state) {
   const board = state.boards.find((b) => b.id === state.boardID);
-  const tools = `<div class="board-tools"><span class="muted">${board?.query ? `<span class="mono">${esc(board.query)}</span>` : "All project tasks"} · ${state.issues.length} tasks</span><span>${board && !board.is_builtin ? '<button class="quiet" data-action="edit-board">Edit board</button>' : ""}<button class="quiet" data-action="new-board">+ Save a board</button></span></div>`;
+  const tools = `<div class="board-tools"><span class="muted">${board?.query ? `<span class="mono">${esc(board.query)}</span>` : "All project tasks"} · ${state.issues.length} tasks</span><span>${board && !board.is_builtin ? `<button class="quiet" data-action="edit-board" data-id="${esc(board.id)}">Edit board</button>` : ""}<button class="quiet" data-action="new-board">+ Save a board</button></span></div>`;
   const columns = Object.entries(statuses).filter(
     ([key]) => key !== "closed" || state.filters.include_closed,
   );

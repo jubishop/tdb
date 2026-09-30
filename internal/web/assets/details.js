@@ -356,7 +356,7 @@ export function createPanels(state, refresh) {
   function boardForm(board) {
     showModal(
       board ? "Edit board" : "Create a saved board",
-      `<label>Name<input name="name" value="${esc(board?.name)}" required></label><label>TDQ query<span class="field-hint">Leave empty to include all tasks. Example: priority &lt;= P1</span><textarea name="query" rows="4" placeholder="type = feature AND status != closed">${esc(board?.query)}</textarea></label>${board ? '<button type="button" class="quiet danger-text" data-action="delete-board">Delete board…</button>' : ""}`,
+      `<label>Name<input name="name" value="${esc(board?.name)}" required></label><label>TDQ query<span class="field-hint">Leave empty to include all tasks. Example: priority &lt;= P1</span><textarea name="query" rows="4" placeholder="type = feature AND status != closed">${esc(board?.query)}</textarea></label>${board ? `<button type="button" class="quiet danger-text" data-action="delete-board" data-id="${esc(board.id)}">Delete board…</button>` : ""}`,
       async (form) => {
         const data = await api(board ? `/boards/${board.id}` : "/boards", {
           method: board ? "PATCH" : "POST",
@@ -372,6 +372,12 @@ export function createPanels(state, refresh) {
         toast(board ? "Board updated" : "Board created");
       },
     );
+  }
+
+  function boardByID(id) {
+    const board = state.boards.find((board) => board.id === id);
+    if (!board) throw new Error("This board is no longer available. Refresh the workspace and try again.");
+    return board;
   }
 
   async function handleAction(action, target) {
@@ -395,9 +401,9 @@ export function createPanels(state, refresh) {
     } else if (action === "transition") transition(target.dataset.transition);
     else if (action === "new-board") boardForm();
     else if (action === "edit-board")
-      boardForm(state.boards.find((b) => b.id === state.boardID));
+      boardForm(boardByID(target.dataset.id));
     else if (action === "delete-board") {
-      const board = state.boards.find((b) => b.id === state.boardID);
+      const board = boardByID(target.dataset.id);
       showModal(
         "Delete board",
         `<p>Delete <strong>${esc(board.name)}</strong>? The tasks remain in the project.</p>`,

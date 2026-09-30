@@ -26,7 +26,10 @@ and `TDB_TD_TOKEN` for its bearer token when required.
 
 - **Board:** View tasks by status. Choose a saved board from the sidebar, or
   create one using a [TDQ query](https://github.com/marcus/td/blob/main/website/docs/query-language.md). Drag cards to reorder them
-  or perform supported status changes.
+  or perform supported status changes. A status change can remove a task from
+  a board whose query no longer matches it. The workspace confirms the change
+  and removes the card. If the status changes but reordering fails, the error
+  explains which part succeeded.
 - **List:** Search and filter project tasks in a compact table.
 - **Reviews:** Open tasks submitted for review. Read their acceptance criteria,
   handoffs, comments, dependencies, and logs before using **Approve** or
