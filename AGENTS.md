@@ -63,7 +63,9 @@ foundation. Keep secrets and generated caches out of Git.
 
 Go 1.27.x; plain JavaScript and CSS embedded under `internal/web/assets/`.
 Use `make build` and `make install` for the local executable. Run
-`bin/check-app` for Go tests, vet, formatting, and build after code changes.
+`bin/check-app` for browser event tests, Go tests, vet, formatting, and build
+after code changes. Application checks require Node.js 24.x; no npm packages
+are needed.
 Use `bin/check --full` for the full delivery gate.
 
 Use td's public CLI and HTTP API. Do not import td internals or write its

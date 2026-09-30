@@ -41,15 +41,18 @@ settings when adapting setup; remove an obsolete QMD-only file.
 
 The application supports macOS and Linux with Go 1.27.x. The compiled binary
 has no JavaScript runtime dependency. `go.mod` declares the compiler baseline;
-CI selects it with setup-go. `bin/check-app` rejects other Go minor versions
-before application validation starts.
+CI selects it with setup-go. Application checks also use Node.js 24.x and its
+built-in test runner to exercise browser events and API requests without npm
+dependencies. `bin/check-app` rejects unsupported Go and Node.js versions before
+application validation starts. Building and running tdb does not need Node.js.
 
 - `make build`: compile to `dist/tdb`.
 - `make install`: build and install to `~/.local/bin/tdb`.
-- `bin/check-app`: formatting, Go race tests, vet, and build.
+- `bin/check-app`: browser event tests, formatting, Go race tests, vet, and build.
 - `bin/check --full`: foundation behavior tests plus application validation.
 
-Application validation explicitly selects the root package and `internal/`.
+Application validation explicitly selects the root Go package, `internal/`,
+and `tests/*.test.mjs`.
 It does not traverse worktrees, nested checkouts, or local caches. Build output
 stays in the active checkout's ignored `dist/` directory. The
 [GitHub workflow](../.github/workflows/check.yml) runs the full gate on macOS

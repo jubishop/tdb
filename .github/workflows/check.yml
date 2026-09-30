@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
       - name: Install ShellCheck (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install --yes shellcheck

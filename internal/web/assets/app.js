@@ -401,7 +401,11 @@ document.addEventListener("drop", async (event) => {
     }
     await api(`/boards/${boardID}/move`, {
       method: "POST",
-      body: { issue_id: id, before_id: beforeID || "" },
+      body: {
+        issue_id: id,
+        before_id: beforeID || "",
+        include_closed: state.filters.include_closed,
+      },
     });
     toast("Board updated");
   } catch (error) {

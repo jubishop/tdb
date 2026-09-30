@@ -12,11 +12,18 @@ try:
     version = subprocess.check_output(["go", "version"], cwd=root, env=env, text=True).strip()
     if not re.search(r"\bgo1\.27\.\d+\b", version):
         raise RuntimeError("Go 1.27.x is required; detected " + version + ". Select a Go 1.27 toolchain.")
+    node_version = subprocess.check_output(["node", "--version"], cwd=root, env=env, text=True).strip()
+    if not re.fullmatch(r"v24\.\d+\.\d+", node_version):
+        raise RuntimeError("Node.js 24.x is required for application checks; detected " + node_version + ".")
     sources = sorted(root.glob("*.go")) + sorted((root / "internal").rglob("*.go"))
     unformatted = subprocess.check_output(["gofmt", "-l", *map(str, sources)], cwd=root, env=env, text=True)
     if unformatted.strip():
         raise RuntimeError("Run gofmt on:\n" + unformatted)
-    for command in (["go", "test", "-race", ".", "./internal/..."],
+    browser_tests = sorted((root / "tests").glob("*.test.mjs"))
+    if not browser_tests:
+        raise RuntimeError("No browser event tests found in tests/*.test.mjs.")
+    for command in (["node", "--test", *map(str, browser_tests)],
+                    ["go", "test", "-race", ".", "./internal/..."],
                     ["go", "vet", ".", "./internal/..."],
                     ["go", "build", "-o", "dist/tdb", "."]):
         subprocess.run(command, cwd=root, env=env, check=True)

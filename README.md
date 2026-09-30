@@ -6,7 +6,7 @@ The interface is embedded in one Go executable. Node is not needed.
 
 ## Install and run
 
-Requires macOS or Linux and a compatible `td` on PATH. To build from source,
+Requires macOS or Linux and `td` v0.66.0 or later on PATH. To build from source,
 use Go 1.27.x:
 
 ```sh
@@ -33,15 +33,15 @@ Set `TDB_TD_TOKEN` when connecting to a server protected by a known token.
 A second tdb process cannot reuse an automatically generated token; reuse the
 first browser URL, or start td serve yourself with a known token.
 
-### Required td API changes
+### Required td version
 
-The initial tdb version requires the core changes in
-[jubishop/td#1](https://github.com/jubishop/td/pull/1). Homebrew td 0.65.0 lacks
-these changes. Until they ship in a td release, build that branch and select
-the executable with `--td`:
+The client API ships in [td v0.66.0](https://github.com/marcus/td/releases/tag/v0.66.0)
+and later. Install or upgrade td using its
+[official instructions](https://github.com/marcus/td#installation).
+To build td from source and select the executable with `--td`:
 
 ```sh
-git clone --branch worktree-browserView https://github.com/jubishop/td.git td-api
+git clone https://github.com/marcus/td.git td-api
 cd td-api
 go build -o td .
 cd /path/to/your/project
@@ -69,7 +69,9 @@ Use `td` for local work and GitHub Issues for shared scope. See the
 [development workflow](docs/development-workflow.md) and
 [task tracking guide](docs/task-tracking.md). Routine `bin/check` validates the
 foundation only; `bin/check --full` also runs Go tests, vet, formatting, and build.
-The frontend is plain JavaScript and CSS with no build step.
+The frontend is plain JavaScript and CSS with no build step. Application checks
+use Node.js 24.x for browser event regression tests, with no npm dependencies.
+Running or building tdb does not require Node.js.
 
 ## License
 

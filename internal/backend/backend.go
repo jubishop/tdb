@@ -170,7 +170,7 @@ func Connect(ctx context.Context, opts Options) (*Backend, error) {
 }
 
 func compatibilityError() error {
-	return fmt.Errorf("this td build lacks the client API required by tdb; install the core API changes from https://github.com/jubishop/td/pull/1 (see tdb README)")
+	return fmt.Errorf("this td build lacks the client API required by tdb; install td v0.66.0 or later from https://github.com/marcus/td (see tdb README)")
 }
 
 func inspect(ctx context.Context, u *url.URL, token string) (Project, error) {
