@@ -56,7 +56,7 @@ export function navigation(state) {
     ? [
         ["In progress", summary.in_progress.length, "in_progress"],
         ["To review", reviewCount, "in_review"],
-        ["Blocked", summary.blocked.length, "blocked"],
+        ["Blocked or waiting", summary.blocked.length, "blocked"],
       ]
         .map(
           ([label, count, status]) =>

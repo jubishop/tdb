@@ -45,6 +45,9 @@ and `TDB_TD_TOKEN` for its bearer token when required.
   show the last recorded activity; they do not indicate whether an agent process
   is currently running.
 
+The **Blocked or waiting** summary includes tasks waiting on dependencies.
+The Board's **Blocked** column contains only tasks whose status is Blocked.
+
 Select a task to open its side panel. Its URL can be bookmarked. Use **Edit** to
 change its fields, including its parent task or epic. The panel also supports
 comments and dependency editing. Descriptions and acceptance criteria use
@@ -157,3 +160,7 @@ Keyboard ordering decision (2026-09-30): the user chose to add **Move up** and
 **Move down** controls for a selected task on a board. This makes board ordering
 available without dragging, at the cost of two additional task-panel controls.
 Moves use the visible order within the task's current status column.
+
+Blocked summary decision (2026-09-30): the user chose to retain the existing
+count and label it **Blocked or waiting**. This keeps dependency-blocked work
+visible while distinguishing the summary from the Board's Blocked status column.
