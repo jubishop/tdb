@@ -28,9 +28,12 @@ let refreshID = 0;
 let refreshController;
 let navigationID = 0;
 let filterTimer;
-let dragID;
+let displayedBoard;
+let drag;
 let busy = false;
 let queuedRefresh = false;
+let startup;
+let startupTimer;
 
 function setting(key, value) {
   try {
@@ -83,7 +86,8 @@ function filterParams(filters) {
 }
 
 async function refresh() {
-  if (dragID || busy) {
+  if (!state.project) return start();
+  if (drag || busy) {
     queuedRefresh = true;
     return;
   }
@@ -142,6 +146,9 @@ async function refresh() {
       issues,
       boardIssues,
     });
+    displayedBoard = state.view === "board"
+      ? { boardID, issues, boardIssues, includeClosed: state.filters.include_closed }
+      : null;
     document.querySelector("#error-banner").hidden = true;
     renderWorkspace(state);
     saveSettings();
@@ -347,12 +354,16 @@ window.addEventListener("hashchange", () => route().catch(showError));
 
 document.addEventListener("dragstart", (event) => {
   const card = event.target.closest(".task-card");
-  if (!card || busy) return;
-  dragID = card.dataset.id;
+  if (!card) return;
+  if (busy || !displayedBoard) {
+    event.preventDefault();
+    return;
+  }
+  drag = { id: card.dataset.id, board: displayedBoard };
   refreshID++;
   refreshController?.abort();
   queuedRefresh = true;
-  event.dataTransfer.setData("text/plain", dragID);
+  event.dataTransfer.setData("text/plain", drag.id);
   event.dataTransfer.effectAllowed = "move";
   card.classList.add("dragging");
 });
@@ -365,7 +376,7 @@ function clearDrop() {
 }
 document.addEventListener("dragover", (event) => {
   const column = event.target.closest(".column");
-  if (!dragID || !column) return;
+  if (!drag || !column) return;
   event.preventDefault();
   event.dataTransfer.dropEffect = "move";
   clearDrop();
@@ -380,15 +391,14 @@ document.addEventListener("dragover", (event) => {
 });
 document.addEventListener("drop", async (event) => {
   const column = event.target.closest(".column");
-  if (!column || !dragID) return;
+  if (!column || !drag) return;
   event.preventDefault();
-  const id = dragID;
-  const boardID = state.boardID;
-  const issue = state.issues.find((i) => i.id === id);
+  const { id, board } = drag;
+  const issue = board.issues.find((i) => i.id === id);
   const card = event.target.closest(".task-card");
   const after = card?.classList.contains("drop-after");
   const targetID = card?.dataset.id;
-  dragID = null;
+  drag = null;
   busy = true;
   clearDrop();
   let moveError;
@@ -409,25 +419,25 @@ document.addEventListener("drop", async (event) => {
         revision: issue.revision,
       });
     }
-    const ordered = state.boardIssues
+    const ordered = board.boardIssues
       .map((row) => row.issue.id)
       .filter((item) => item !== id);
     let beforeID = targetID;
     if (after && targetID)
       beforeID = ordered[ordered.indexOf(targetID) + 1] || "";
     if (!targetID) {
-      const sameColumn = state.issues.filter(
+      const sameColumn = board.issues.filter(
         (i) => i.status === toStatus && i.id !== id,
       );
       const last = sameColumn.at(-1)?.id;
       beforeID = last ? ordered[ordered.indexOf(last) + 1] || "" : "";
     }
-    await api(`/boards/${boardID}/move`, {
+    await api(`/boards/${board.boardID}/move`, {
       method: "POST",
       body: {
         issue_id: id,
         before_id: beforeID || "",
-        include_closed: state.filters.include_closed,
+        include_closed: board.includeClosed,
       },
     });
     toast("Board updated");
@@ -441,7 +451,7 @@ document.addEventListener("drop", async (event) => {
   }
 });
 document.addEventListener("dragend", () => {
-  dragID = null;
+  drag = null;
   clearDrop();
   document
     .querySelectorAll(".dragging")
@@ -452,7 +462,18 @@ document.addEventListener("dragend", () => {
   }
 });
 
-async function start() {
+function start() {
+  if (startup) return startup;
+  clearTimeout(startupTimer);
+  startup = initialize().catch((error) => {
+    connection(false);
+    showError(error);
+    startupTimer = setTimeout(start, 2000);
+  }).finally(() => { startup = null; });
+  return startup;
+}
+
+async function initialize() {
   const project = await api("/project");
   state.project = project;
   projectKey = `td.browser:${project.path}`;
@@ -504,4 +525,4 @@ async function start() {
   connectEvents();
 }
 
-start().catch(showError);
+start();

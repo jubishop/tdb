@@ -68,6 +68,14 @@ after code changes. Application checks require Node.js 24.x; no npm packages
 are needed.
 Use `bin/check --full` for the full delivery gate.
 
+After committing and successfully pushing functional changes, run `make install`
+to rebuild and deploy the executable to `/Users/jubi/.local/bin/tdb`. Verify that
+the installed file matches `dist/tdb` and that its help command runs. Skip this
+local deployment only when all changes since the last installation are
+nonfunctional, such as documentation, comments, or agent instructions. Include
+the installation result in the delivery report. Do not stop servers owned by
+another process when updating the executable.
+
 Use td's public CLI and HTTP API. Do not import td internals or write its
 SQLite database directly. Keep backend process ownership explicit: stop only
 servers started by this process. Verify browser changes against a disposable

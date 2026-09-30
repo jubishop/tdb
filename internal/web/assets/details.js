@@ -26,10 +26,27 @@ export function createPanels(state, refresh) {
   let modalSubmit;
 
   modal.addEventListener("cancel", (event) => {
-    if (modal.querySelector("form")?.inert) event.preventDefault();
+    if (!mayCloseModal()) event.preventDefault();
   });
 
-  function dirty() {
+  function modalDirty() {
+    if (!modal.open) return false;
+    return [...modal.querySelectorAll("input, textarea, select")].some((field) => {
+      if (field.tagName === "SELECT") {
+        const original = [...field.options].find((option) => option.defaultSelected)
+          || field.options[0];
+        return field.value !== (original?.value || "");
+      }
+      if (field.type === "checkbox" || field.type === "radio")
+        return field.checked !== field.defaultChecked;
+      return field.value !== field.defaultValue;
+    });
+  }
+  function mayCloseModal() {
+    return !modal.querySelector("form")?.inert &&
+      (!modalDirty() || confirm("Discard your unsaved dialog changes?"));
+  }
+  function drawerDirty() {
     const form = drawer.querySelector("#issue-form");
     return (
       Boolean(
@@ -41,18 +58,27 @@ export function createPanels(state, refresh) {
       Boolean(drawer.querySelector('[name="depends_on"]')?.value.trim())
     );
   }
+  function dirty() {
+    return drawerDirty() || modalDirty();
+  }
   function mayLeave() {
-    return !dirty() || confirm("Discard your unsaved draft?");
+    if (modal.open && modal.querySelector("form")?.inert) return false;
+    if (dirty() && !confirm("Discard your unsaved draft?")) return false;
+    if (modal.open) modal.close();
+    return true;
   }
   function close() {
     if (!mayLeave()) return false;
+    clearDrawer();
+    return true;
+  }
+  function clearDrawer() {
     request++;
     state.detail = null;
     state.editor = null;
     drawer.hidden = true;
     drawer.innerHTML = "";
     document.body.classList.remove("drawer-open");
-    return true;
   }
   function showDrawer(html) {
     replaceContents(drawer, html);
@@ -63,6 +89,7 @@ export function createPanels(state, refresh) {
     return `<header class="drawer-header"><span class="mono muted">${esc(title)}</span><div>${buttons}<button class="icon-button" data-action="close-task" aria-label="Close task details">×</button></div></header>`;
   }
   function showModal(title, contents, onSubmit, submitLabel = "Save") {
+    if (modal.open && !mayCloseModal()) return;
     modalSubmit = onSubmit;
     modal.innerHTML = `<form id="modal-form"><header class="modal-header"><h2 id="modal-title">${esc(title)}</h2><button type="button" class="icon-button" data-action="close-modal" aria-label="Close dialog">×</button></header><div class="modal-body">${contents}<p id="modal-error" class="form-error" role="alert" hidden></p></div><footer class="modal-footer"><button type="button" class="quiet" data-action="close-modal">Cancel</button>${onSubmit ? `<button class="primary" type="submit">${esc(submitLabel)}</button>` : ""}</footer></form>`;
     if (!modal.open) modal.showModal();
@@ -82,7 +109,7 @@ export function createPanels(state, refresh) {
     }
     const data = await api(`/issues/${encodeURIComponent(id)}`);
     if (serial !== request) return false;
-    if (quiet && (state.editor || dirty())) {
+    if (quiet && (state.editor || drawerDirty())) {
       const warning = drawer.querySelector("#draft-warning");
       if (warning && data.issue.revision !== state.editor?.original.revision)
         warning.hidden = false;
@@ -93,7 +120,7 @@ export function createPanels(state, refresh) {
       markdown(data.issue.acceptance),
     ]);
     if (serial !== request) return false;
-    if (quiet && (state.editor || dirty())) return true;
+    if (quiet && (state.editor || drawerDirty())) return true;
     const oldScroll = drawer.querySelector(".detail-body")?.scrollTop || 0;
     state.detail = data;
     renderDetail(data, description, acceptance);
@@ -392,8 +419,7 @@ export function createPanels(state, refresh) {
             method: "DELETE",
             revision: issue.revision,
           });
-          state.editor = null;
-          close();
+          clearDrawer();
           location.hash = state.view;
           await refresh();
           toast("Task deleted");
@@ -401,15 +427,17 @@ export function createPanels(state, refresh) {
         "Delete task",
       );
     } else if (action === "remove-dependency") {
+      const id = state.detail.issue.id;
       await api(
-        `/issues/${state.detail.issue.id}/dependencies/${encodeURIComponent(target.dataset.id)}`,
+        `/issues/${id}/dependencies/${encodeURIComponent(target.dataset.id)}`,
         { method: "DELETE" },
       );
-      await open(state.detail.issue.id, { quiet: true });
+      await open(id, { quiet: true });
       await refresh();
       toast("Dependency removed");
-    } else if (action === "close-modal") modal.close();
-    else if (action === "shortcuts")
+    } else if (action === "close-modal") {
+      if (mayCloseModal()) modal.close();
+    } else if (action === "shortcuts")
       showModal(
         "Keyboard shortcuts",
         '<dl class="shortcuts"><dt>N</dt><dd>New task</dd><dt>/</dt><dd>Focus search</dd><dt>1 / 2 / 3 / 4</dt><dd>Board / List / Reviews / Activity</dd><dt>J / K</dt><dd>Next / previous task</dd><dt>Enter</dt><dd>Open focused task</dd><dt>Esc</dt><dd>Close panel or dialog</dd><dt>?</dt><dd>Show shortcuts</dd></dl>',

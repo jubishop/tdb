@@ -7,6 +7,8 @@ export function element() {
     open: false,
     showModal() { this.open = true; },
     close() { this.open = false; },
+    focus() { document.activeElement = this; },
+    scrollIntoView() {},
     elements: { include_closed: {} },
     classList: {
       add: (...names) => names.forEach((name) => classes.add(name)),
@@ -21,21 +23,21 @@ export function element() {
     addEventListener(name, listener) { this.listeners.set(name, listener); },
     contains: () => false,
     querySelector: () => null,
+    querySelectorAll: () => [],
   };
 }
 
 let sequence = 0;
 
 // Run the application with only browser and HTTP boundaries faked.
-export async function browser(t, { includeClosed = false, hash = "#board" } = {}) {
-  const network = {};
+export async function browser(t, { includeClosed = false, hash = "#board", networkHandler } = {}) {
+  const network = { handler: networkHandler };
   const nodes = new Map();
   const listeners = new Map();
   const windowListeners = new Map();
   const dialogs = { confirm: false };
   const requests = [];
   const streams = [];
-  const ready = Promise.withResolvers();
   const board = { id: "bd-test", name: "Test board", is_builtin: true };
   const issues = ["first", "second", "third", "last"].map((name) => ({
     id: `td-${name}`,
@@ -53,7 +55,9 @@ export async function browser(t, { includeClosed = false, hash = "#board" } = {}
     document: {
       body: element(),
       documentElement: element(),
-      querySelector: node,
+      querySelector: (selector) => selector === "#drawer:not([hidden]) #detail-error"
+        ? (node("#drawer").hidden ? null : node("#drawer").querySelector("#detail-error"))
+        : node(selector),
       querySelectorAll: () => [],
       addEventListener: (name, listener) => listeners.set(name, listener),
     },
@@ -75,7 +79,7 @@ export async function browser(t, { includeClosed = false, hash = "#board" } = {}
       static CLOSED = 2;
       readyState = 0;
       listeners = new Map();
-      constructor() { streams.push(this); ready.resolve(); }
+      constructor() { streams.push(this); }
       addEventListener(name, listener) { this.listeners.set(name, listener); }
     },
     fetch: async (path, options) => {
@@ -112,8 +116,12 @@ export async function browser(t, { includeClosed = false, hash = "#board" } = {}
     });
   }
   const setTimer = globalThis.setTimeout;
-  t.mock.method(globalThis, "setTimeout", (...args) => setTimer(...args).unref());
+  t.mock.method(globalThis, "setTimeout", (...args) => {
+    const timer = setTimer(...args);
+    timer.unref?.();
+    return timer;
+  });
   await import(`../../internal/web/assets/app.js?test=${sequence++}`);
-  await ready.promise;
+  await new Promise(setImmediate);
   return { node, listeners, windowListeners, dialogs, requests, issues, network, streams };
 }

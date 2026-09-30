@@ -86,3 +86,24 @@ test("opening the workspace at the skip-link fragment loads tasks", async (t) =>
   const { node } = await browser(t, { hash: "#content" });
   assert.match(node("#content").innerHTML, /td-first/);
 });
+
+test("closing task details during dependency removal does not report a false failure", async (t) => {
+  const { drawer, network, listeners, node } = await workspace(t);
+  await click(listeners, "task", { id: "td-first" });
+  const entered = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  const handle = network.handler;
+  network.handler = async (path, options) => {
+    if (path !== "/v1/issues/td-first/dependencies/dep-one") return handle(path, options);
+    entered.resolve();
+    return response.promise;
+  };
+  const removal = click(listeners, "remove-dependency", { id: "dep-one" });
+  await entered.promise;
+  await click(listeners, "close-task");
+  response.resolve({ ok: true, json: async () => ({ ok: true, data: {} }) });
+  await removal;
+  assert.equal(drawer.hidden, true);
+  assert.equal(node("#error-banner").hidden, true);
+  assert.equal(node("#toast").textContent, "Dependency removed");
+});

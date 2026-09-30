@@ -81,6 +81,10 @@ draft for each changed field. Conflicting fields default to the saved value.
 Choose the values you want, select **Review selected values**, then edit and
 save explicitly. A further concurrent change triggers another comparison.
 
+Changed dialog fields also receive draft protection. Closing a board or review
+dialog with Escape, Cancel, or its close button asks before discarding edits.
+Leaving or reloading the page also warns when a dialog contains unsaved edits.
+
 Writes use the existing HTTP API's shared web session and appear in td's action
 history. **Close without review** is for administrative closures such as
 duplicates or cancellations, when the project's policy permits it. See the [HTTP API](https://github.com/marcus/td/blob/main/website/docs/http-api/overview.md) for its
@@ -114,3 +118,8 @@ the default and use an explicit fixed port for persistence. This keeps browser
 preferences in browser storage and avoids a port registry or additional
 server-side storage. The tradeoff is that persistence across launches requires
 the user to choose a stable port.
+
+Dialog draft decision (2026-09-30): the user chose the same discard warning for
+dialog edits as for task drafts, including Escape and Cancel. This protects
+board queries and review reasons at the cost of one confirmation when
+discarding changed fields.
