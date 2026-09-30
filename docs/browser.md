@@ -47,9 +47,10 @@ comments and dependency editing. Descriptions and acceptance criteria use
 Markdown, with a **Preview** button. **More fields** contains points, sprint,
 due date, deferral, and the minor-task flag.
 
-Text search is the default. Select **TDQ** to enter an explicit query. Type and
-priority filters apply to task views. Enable **Closed** to include completed
-tasks.
+Text search is the default. It matches task IDs, titles, descriptions, and
+labels in Board, List, and Reviews. Select **TDQ** to enter an explicit query.
+Type and priority filters apply to task views. Enable **Closed** to include
+completed tasks.
 
 ## Saved preferences and bookmarks
 
@@ -126,3 +127,9 @@ Dialog draft decision (2026-09-30): the user chose the same discard warning for
 dialog edits as for task drafts, including Escape and Cancel. This protects
 board queries and review reasons at the cost of one confirmation when
 discarding changed fields.
+
+Text search decision (2026-09-30): the user chose to include labels consistently
+in Board, List, and Reviews. This preserves label search from Board and makes
+the same search behave consistently across task views. Text searches use a
+quoted TDQ expression so filtering and pagination stay on the td server;
+explicit TDQ queries retain their existing behavior.

@@ -83,6 +83,12 @@ function filterParams(filters) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters))
     if (value !== "" && value !== false) params.set(key, String(value));
+  if (filters.search_mode === "text" && filters.search?.trim()) {
+    const text = JSON.stringify(filters.search.trim());
+    params.set("search", ["id", "title", "description", "labels"]
+      .map((field) => `${field} ~ ${text}`).join(" OR "));
+    params.set("search_mode", "tdq");
+  }
   return params;
 }
 
@@ -121,13 +127,7 @@ async function refresh() {
         const matches = new Set(
           (await allIssues(params, signal)).map((i) => i.id),
         );
-        const search = state.filters.search.toLowerCase();
-        issues = issues.filter(
-          (i) =>
-            matches.has(i.id) ||
-            (state.filters.search_mode === "text" &&
-              i.labels.join(" ").toLowerCase().includes(search)),
-        );
+        issues = issues.filter((i) => matches.has(i.id));
       }
       if (state.filters.type)
         issues = issues.filter((i) => i.type === state.filters.type);
