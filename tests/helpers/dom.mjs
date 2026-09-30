@@ -17,6 +17,7 @@ export function domContainer(root) {
         attributes,
         dataset: Object.fromEntries(Object.entries(attributes).filter(([key]) => key.startsWith("data-")).map(([key, value]) => [key.slice(5), value])),
         getAttribute: (key) => attributes[key] ?? null,
+        setAttribute: (key, value) => { attributes[key] = String(value); },
         focus() { document.activeElement = this; },
       };
       return control;

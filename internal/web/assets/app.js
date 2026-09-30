@@ -22,7 +22,7 @@ const state = {
     include_closed: false,
   },
 };
-const panels = createPanels(state, refresh);
+const panels = createPanels(state, refresh, boardPosition);
 let projectKey = "";
 let refreshID = 0;
 let refreshController;
@@ -92,6 +92,54 @@ function filterParams(filters) {
   return params;
 }
 
+function boardPosition(id) {
+  const board = displayedBoard;
+  const issue = board?.issues.find((issue) => issue.id === id);
+  if (!issue) return null;
+  const column = board.issues.filter((item) => item.status === issue.status);
+  const index = column.findIndex((item) => item.id === id);
+  const next = column[index + 1];
+  const ordered = board.boardIssues.map((row) => row.issue.id);
+  return {
+    boardID: board.boardID,
+    name: board.name,
+    includeClosed: board.includeClosed,
+    up: column[index - 1]?.id ?? null,
+    down: next ? ordered[ordered.indexOf(next.id) + 1] || "" : null,
+  };
+}
+
+async function moveTask(name, target) {
+  if (busy || drag) return;
+  const position = boardPosition(target.dataset.id);
+  const beforeID = position?.[name === "move-up" ? "up" : "down"];
+  if (!position || position.boardID !== target.dataset.board || beforeID === null) return;
+  busy = true;
+  refreshID++;
+  refreshController?.abort();
+  target.setAttribute("aria-disabled", "true");
+  let moveError;
+  try {
+    await api(`/boards/${position.boardID}/move`, {
+      method: "POST",
+      body: {
+        issue_id: target.dataset.id,
+        before_id: beforeID,
+        include_closed: position.includeClosed,
+      },
+    });
+    toast(name === "move-up" ? "Task moved up" : "Task moved down");
+  } catch (error) {
+    moveError = error;
+  } finally {
+    busy = false;
+    queuedRefresh = false;
+    await refresh();
+    target.setAttribute("aria-disabled", "false");
+    if (moveError) showError(moveError);
+  }
+}
+
 async function refresh() {
   if (!state.project) return start();
   if (drag || busy) {
@@ -148,10 +196,11 @@ async function refresh() {
       boardIssues,
     });
     displayedBoard = state.view === "board"
-      ? { boardID, issues, boardIssues, includeClosed: state.filters.include_closed }
+      ? { boardID, name: boards.find((board) => board.id === boardID)?.name, issues, boardIssues, includeClosed: state.filters.include_closed }
       : null;
     document.querySelector("#error-banner").hidden = true;
     renderWorkspace(state);
+    panels.updateBoardOrder();
     saveSettings();
     if (state.detail) {
       try {
@@ -220,6 +269,8 @@ async function action(name, target) {
     }
   } else if (name === "new-task") {
     if (panels.newTask()) history.replaceState(null, "", `#${state.view}`);
+  } else if (name === "move-up" || name === "move-down") {
+    await moveTask(name, target);
   } else if (name === "refresh") await refresh();
   else if (name === "theme") {
     const themes = ["system", "light", "dark"];
@@ -234,15 +285,16 @@ async function action(name, target) {
 
 document.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
-  if (!target || target.disabled) return;
+  if (!target || target.disabled || target.getAttribute?.("aria-disabled") === "true") return;
   event.preventDefault();
-  target.disabled = true;
+  const moving = ["move-up", "move-down"].includes(target.dataset.action);
+  if (!moving) target.disabled = true;
   try {
     await action(target.dataset.action, target);
   } catch (error) {
     showError(error);
   } finally {
-    target.disabled = false;
+    if (!moving) target.disabled = false;
   }
 });
 

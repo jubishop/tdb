@@ -30,6 +30,10 @@ and `TDB_TD_TOKEN` for its bearer token when required.
   a board whose query no longer matches it. The workspace confirms the change
   and removes the card. If the status changes but reordering fails, the error
   explains which part succeeded.
+  In a task's side panel, **Move up** and **Move down** change its order within
+  the current status column. These buttons work with the keyboard and move
+  past the previous or next visible task. Search and filters determine which
+  tasks are visible; reordering preserves every task's status.
 - **List:** Search and filter project tasks in a compact table.
 - **Reviews:** Open tasks submitted for review. Read their acceptance criteria,
   handoffs, comments, dependencies, and logs before using **Approve** or
@@ -146,3 +150,8 @@ Pending-save decision (2026-09-30): the user chose to wait for task edits,
 comments, and dependency saves before leaving the panel, matching dialog saves.
 This prevents a discard action from appearing to cancel a write already sent
 to td. Navigation waits for the request at the cost of a delay on slow saves.
+
+Keyboard ordering decision (2026-09-30): the user chose to add **Move up** and
+**Move down** controls for a selected task on a board. This makes board ordering
+available without dragging, at the cost of two additional task-panel controls.
+Moves use the visible order within the task's current status column.

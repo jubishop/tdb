@@ -19,7 +19,7 @@ import {
   replaceContents,
 } from "./ui.js";
 
-export function createPanels(state, refresh) {
+export function createPanels(state, refresh, boardPosition) {
   const drawer = document.querySelector("#drawer");
   const modal = document.querySelector("#modal");
   let request = 0;
@@ -185,6 +185,7 @@ export function createPanels(state, refresh) {
       <div class="detail-badges">${statusBadge(issue.status)}${priorityBadge(issue.priority)}<span class="label">${esc(issue.type)}</span></div>
       <h2 class="task-heading">${esc(issue.title)}</h2>
       <div class="detail-actions">${actions.map(([action, label]) => `<button class="${action === "approve" ? "primary" : action === "reject" ? "danger-outline" : "secondary"}" data-action="transition" data-transition="${action}">${label}</button>`).join("")}</div>
+      <div id="board-order">${boardOrder(issue)}</div>
       <dl class="task-properties"><dt>Implementer</dt><dd>${esc(sessionName(state.sessions, issue.implementer_session))}</dd><dt>Parent</dt><dd>${issue.parent_id ? issueLink(issue.parent_id) : "—"}</dd><dt>Labels</dt><dd>${issue.labels.length ? issue.labels.map((l) => `<span class="label">${esc(l)}</span>`).join(" ") : "—"}</dd><dt>Updated</dt><dd title="${esc(timestamp(issue.updated_at))}">${relative(issue.updated_at)}</dd>${issue.due_date ? `<dt>Due</dt><dd>${esc(issue.due_date)}</dd>` : ""}${issue.defer_until ? `<dt>Deferred until</dt><dd>${esc(issue.defer_until)}</dd>` : ""}${issue.sprint ? `<dt>Sprint</dt><dd>${esc(issue.sprint)}</dd>` : ""}${issue.points ? `<dt>Points</dt><dd>${issue.points}</dd>` : ""}${issue.minor ? "<dt>Review policy</dt><dd>Minor task</dd>" : ""}</dl>
       <section class="detail-section"><h3>Description</h3><div class="markdown">${description}</div></section>
       <section class="detail-section"><h3>Acceptance criteria</h3><div class="markdown">${acceptance}</div></section>
@@ -212,6 +213,17 @@ export function createPanels(state, refresh) {
       <p id="detail-error" class="form-error" role="alert" hidden></p>
     </div>`,
     );
+  }
+
+  function boardOrder(issue) {
+    const position = boardPosition(issue.id);
+    if (!position) return "";
+    return `<section class="detail-section"><h3>Board order</h3><p class="small muted">${esc(position.name)} · ${esc(issue.status.replaceAll("_", " "))}</p><div class="detail-actions">${["up", "down"].map((direction) => `<button class="secondary" data-action="move-${direction}" data-id="${esc(issue.id)}" data-board="${esc(position.boardID)}" aria-disabled="${position[direction] === null}">Move ${direction}</button>`).join("")}</div></section>`;
+  }
+
+  function updateBoardOrder() {
+    const root = drawer.querySelector("#board-order");
+    if (root && state.detail) replaceContents(root, boardOrder(state.detail.issue));
   }
 
   function editor(original, values = original, note = "") {
@@ -507,5 +519,5 @@ export function createPanels(state, refresh) {
     }
   }
 
-  return { open, close, dirty, mayLeave, newTask, handleAction, submit };
+  return { open, close, dirty, mayLeave, newTask, handleAction, submit, updateBoardOrder };
 }
