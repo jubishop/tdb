@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""Application checks; deliberately excluded from routine foundation checks."""
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+root = Path(__file__).resolve().parents[1]
+env = dict(os.environ, GOWORK="off")
+try:
+    version = subprocess.check_output(["go", "version"], cwd=root, env=env, text=True).strip()
+    if not re.search(r"\bgo1\.27\.\d+\b", version):
+        raise RuntimeError("Go 1.27.x is required; detected " + version + ". Select a Go 1.27 toolchain.")
+    sources = sorted(root.glob("*.go")) + sorted((root / "internal").rglob("*.go"))
+    unformatted = subprocess.check_output(["gofmt", "-l", *map(str, sources)], cwd=root, env=env, text=True)
+    if unformatted.strip():
+        raise RuntimeError("Run gofmt on:\n" + unformatted)
+    for command in (["go", "test", "-race", ".", "./internal/..."],
+                    ["go", "vet", ".", "./internal/..."],
+                    ["go", "build", "-o", "dist/tdb", "."]):
+        subprocess.run(command, cwd=root, env=env, check=True)
+except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+    print(error, file=sys.stderr)
+    sys.exit(1)

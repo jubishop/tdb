@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import subprocess
+from pathlib import Path
+import sys
+sys.dont_write_bytecode = True
+from _checks import main
+result = main()
+if result == 0 and sys.argv[1:] == ["--full"]:
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run([sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_app_checks.py", "-v"], cwd=root).returncode
+    if result == 0:
+        result = subprocess.run([str(root / "bin/check-app")], cwd=root).returncode
+sys.exit(result)
