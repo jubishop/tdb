@@ -89,6 +89,11 @@ Changed dialog fields also receive draft protection. Closing a board or review
 dialog with Escape, Cancel, or its close button asks before discarding edits.
 Leaving or reloading the page also warns when a dialog contains unsaved edits.
 
+Task edits, comments, and dependency saves keep their panel open until the
+write finishes. You can leave after success, or retry after an error. A
+successful write is reported separately from a failed reload; use **Retry
+loading task** if the saved task cannot be displayed.
+
 Writes use the existing HTTP API's shared web session and appear in td's action
 history. **Close without review** is for administrative closures such as
 duplicates or cancellations, when the project's policy permits it. See the [HTTP API](https://github.com/marcus/td/blob/main/website/docs/http-api/overview.md) for its
@@ -133,3 +138,8 @@ in Board, List, and Reviews. This preserves label search from Board and makes
 the same search behave consistently across task views. Text searches use a
 quoted TDQ expression so filtering and pagination stay on the td server;
 explicit TDQ queries retain their existing behavior.
+
+Pending-save decision (2026-09-30): the user chose to wait for task edits,
+comments, and dependency saves before leaving the panel, matching dialog saves.
+This prevents a discard action from appearing to cancel a write already sent
+to td. Navigation waits for the request at the cost of a delay on slow saves.

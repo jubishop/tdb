@@ -59,9 +59,13 @@ export function createPanels(state, refresh) {
     );
   }
   function dirty() {
-    return drawerDirty() || modalDirty();
+    return drawerBusy() || drawerDirty() || modalDirty();
+  }
+  function drawerBusy() {
+    return Boolean(drawer.querySelector("form[inert]"));
   }
   function mayLeave() {
+    if (drawerBusy()) return false;
     if (modal.open && modal.querySelector("form")?.inert) return false;
     if (dirty() && !confirm("Discard your unsaved draft?")) return false;
     if (modal.open) modal.close();
@@ -89,6 +93,7 @@ export function createPanels(state, refresh) {
     return `<header class="drawer-header"><span class="mono muted">${esc(title)}</span><div>${buttons}<button class="icon-button" data-action="close-task" aria-label="Close task details">×</button></div></header>`;
   }
   function showModal(title, contents, onSubmit, submitLabel = "Save") {
+    if (drawerBusy()) return;
     if (modal.open && !mayCloseModal()) return;
     modalSubmit = onSubmit;
     modal.innerHTML = `<form id="modal-form"><header class="modal-header"><h2 id="modal-title">${esc(title)}</h2><button type="button" class="icon-button" data-action="close-modal" aria-label="Close dialog">×</button></header><div class="modal-body">${contents}<p id="modal-error" class="form-error" role="alert" hidden></p></div><footer class="modal-footer"><button type="button" class="quiet" data-action="close-modal">Cancel</button>${onSubmit ? `<button class="primary" type="submit">${esc(submitLabel)}</button>` : ""}</footer></form>`;
@@ -97,6 +102,7 @@ export function createPanels(state, refresh) {
 
   async function open(id, { quiet = false } = {}) {
     if (quiet && state.detail?.issue.id !== id) return false;
+    if (quiet && drawerBusy()) return true;
     if (!quiet && !mayLeave()) return false;
     const serial = ++request;
     if (!quiet) {
@@ -107,29 +113,37 @@ export function createPanels(state, refresh) {
           '<div class="detail-body"><p class="muted">Loading task…</p></div>',
       );
     }
-    const data = await api(`/issues/${encodeURIComponent(id)}`);
-    if (serial !== request) return false;
-    if (quiet && (state.editor || drawerDirty())) {
-      const warning = drawer.querySelector("#draft-warning");
-      if (warning && data.issue.revision !== state.editor?.original.revision)
-        warning.hidden = false;
+    try {
+      const data = await api(`/issues/${encodeURIComponent(id)}`);
+      if (serial !== request) return false;
+      if (quiet && (state.editor || drawerDirty() || drawerBusy())) {
+        const warning = drawer.querySelector("#draft-warning");
+        if (warning && data.issue.revision !== state.editor?.original.revision)
+          warning.hidden = false;
+        return true;
+      }
+      const [description, acceptance] = await Promise.all([
+        markdown(data.issue.description),
+        markdown(data.issue.acceptance),
+      ]);
+      if (serial !== request) return false;
+      if (quiet && (state.editor || drawerDirty() || drawerBusy())) return true;
+      const oldScroll = drawer.querySelector(".detail-body")?.scrollTop || 0;
+      state.detail = data;
+      renderDetail(data, description, acceptance);
+      if (quiet) drawer.querySelector(".detail-body").scrollTop = oldScroll;
+      else
+        drawer
+          .querySelector('[data-action="close-task"]')
+          .focus({ preventScroll: true });
       return true;
+    } catch (error) {
+      if (serial !== request) return false;
+      if (quiet) throw error;
+      showDrawer(header(id) + `<div class="detail-body"><p id="detail-error" class="form-error" role="alert">Could not load this task. ${esc(error.message)}</p><button class="secondary" data-action="task" data-id="${esc(id)}">Retry loading task</button></div>`);
+      drawer.querySelector('[data-action="task"]').focus({ preventScroll: true });
+      return false;
     }
-    const [description, acceptance] = await Promise.all([
-      markdown(data.issue.description),
-      markdown(data.issue.acceptance),
-    ]);
-    if (serial !== request) return false;
-    if (quiet && (state.editor || drawerDirty())) return true;
-    const oldScroll = drawer.querySelector(".detail-body")?.scrollTop || 0;
-    state.detail = data;
-    renderDetail(data, description, acceptance);
-    if (quiet) drawer.querySelector(".detail-body").scrollTop = oldScroll;
-    else
-      drawer
-        .querySelector('[data-action="close-task"]')
-        .focus({ preventScroll: true });
-    return true;
   }
 
   function renderDetail(data, description, acceptance) {
@@ -239,6 +253,7 @@ export function createPanels(state, refresh) {
     const original = editing.original;
     const current = (await api(`/issues/${original.id}`)).issue;
     if (state.editor !== editing) return;
+    drawer.querySelector("#issue-form").inert = false;
     const fields = editableFields.filter(
       (key) =>
         JSON.stringify(normalized(original[key])) !==
@@ -264,7 +279,7 @@ export function createPanels(state, refresh) {
           return `<section class="conflict-field"><h3>${esc(key.replaceAll("_", " "))}</h3><div class="conflict-values"><div><h4>When opened</h4><pre>${display(original[key])}</pre></div><div><h4>Saved now</h4><pre>${display(current[key])}</pre></div><div><h4>Your draft</h4><pre>${display(draft[key])}</pre></div></div><label>Use<select name="${key}" aria-label="Resolution for ${key}"><option value="saved" ${savedChanged ? "selected" : ""}>Saved value</option><option value="draft" ${savedChanged ? "" : "selected"}>Draft value</option></select></label></section>`;
         })
         .join("")}</div>`,
-      async (form) => {
+      (form) => () => {
         const resolved = { ...current };
         for (const key of fields)
           if (form.elements[key].value === "draft") resolved[key] = draft[key];
@@ -291,8 +306,9 @@ export function createPanels(state, refresh) {
       toast("No changes to save");
       return;
     }
+    let data;
     try {
-      const data = await api(
+      data = await api(
         original.id ? `/issues/${original.id}` : "/issues",
         {
           method: original.id ? "PATCH" : "POST",
@@ -300,18 +316,18 @@ export function createPanels(state, refresh) {
           revision: original.revision,
         },
       );
-      if (state.editor === editing) {
-        state.editor = null;
-        drawer.innerHTML = "";
-        history.replaceState(null, "", `#${state.view}?issue=${data.issue.id}`);
-        await open(data.issue.id);
-      }
-      await refresh();
-      toast(original.id ? "Task updated" : "Task created");
     } catch (error) {
-      if (error.status === 409 && original.id) await conflict(editing, draft);
-      else throw error;
+      if (error.status === 409 && original.id) return conflict(editing, draft);
+      throw error;
     }
+    if (state.editor === editing) {
+      state.editor = null;
+      drawer.innerHTML = "";
+      history.replaceState(null, "", `#${state.view}?issue=${data.issue.id}`);
+      await open(data.issue.id);
+    }
+    await refresh();
+    toast(original.id ? "Task updated" : "Task created");
   }
 
   function transition(action) {
@@ -345,9 +361,10 @@ export function createPanels(state, refresh) {
           body,
           revision: issue.revision,
         });
-        await open(issue.id, { quiet: true });
-        await refresh();
-        toast(labels[action]);
+        return async () => {
+          await refresh();
+          toast(labels[action]);
+        };
       },
       labels[action],
     );
@@ -365,11 +382,13 @@ export function createPanels(state, refresh) {
             query: form.elements.query.value,
           },
         });
-        state.boardID = data.board.id;
-        state.view = "board";
-        await refresh();
-        location.hash = "board";
-        toast(board ? "Board updated" : "Board created");
+        return async () => {
+          state.boardID = data.board.id;
+          state.view = "board";
+          await refresh();
+          location.hash = "board";
+          toast(board ? "Board updated" : "Board created");
+        };
       },
     );
   }
@@ -409,9 +428,11 @@ export function createPanels(state, refresh) {
         `<p>Delete <strong>${esc(board.name)}</strong>? The tasks remain in the project.</p>`,
         async () => {
           await api(`/boards/${board.id}`, { method: "DELETE" });
-          state.boardID = "";
-          await refresh();
-          toast("Board deleted");
+          return async () => {
+            state.boardID = "";
+            await refresh();
+            toast("Board deleted");
+          };
         },
         "Delete board",
       );
@@ -425,10 +446,12 @@ export function createPanels(state, refresh) {
             method: "DELETE",
             revision: issue.revision,
           });
-          clearDrawer();
-          location.hash = state.view;
-          await refresh();
-          toast("Task deleted");
+          return async () => {
+            clearDrawer();
+            location.hash = state.view;
+            await refresh();
+            toast("Task deleted");
+          };
         },
         "Delete task",
       );
@@ -438,7 +461,6 @@ export function createPanels(state, refresh) {
         `/issues/${id}/dependencies/${encodeURIComponent(target.dataset.id)}`,
         { method: "DELETE" },
       );
-      await open(id, { quiet: true });
       await refresh();
       toast("Dependency removed");
     } else if (action === "close-modal") {
@@ -454,8 +476,9 @@ export function createPanels(state, refresh) {
     if (form.id === "issue-form") return saveIssue(form);
     if (form.id === "modal-form") {
       if (modalSubmit) {
-        await modalSubmit(form);
+        const afterSave = await modalSubmit(form);
         modal.close();
+        await afterSave?.();
       }
       return;
     }
@@ -466,7 +489,7 @@ export function createPanels(state, refresh) {
         body: { text: form.elements.comment.value },
       });
       form.reset();
-      await open(id, { quiet: true });
+      form.inert = false;
       await refresh();
       toast("Comment added");
     } else if (form.id === "dependency-form") {
@@ -475,7 +498,7 @@ export function createPanels(state, refresh) {
         body: { depends_on: form.elements.depends_on.value.trim() },
       });
       form.reset();
-      await open(id, { quiet: true });
+      form.inert = false;
       await refresh();
       toast("Dependency added");
     }

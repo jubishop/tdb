@@ -6,13 +6,13 @@
   --hover: #eceef4;
   --line: #e3e5ed;
   --text: #272936;
-  --muted: #777b8f;
-  --subtle: #9699a8;
+  --muted: #616577;
+  --subtle: #686c7c;
   --accent: #6656d9;
   --accent-bg: #efecff;
-  --green: #288c65;
-  --amber: #ac7918;
-  --red: #c45559;
+  --green: #217650;
+  --amber: #886014;
+  --red: #b24549;
   --shadow: 0 12px 45px #18203912;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -27,7 +27,7 @@
     --line: #30323d;
     --text: #ececf2;
     --muted: #9295a6;
-    --subtle: #656979;
+    --subtle: #8e92a3;
     --accent: #b4a6ff;
     --accent-bg: #302942;
     --green: #72c6a0;
@@ -45,7 +45,7 @@
   --line: #30323d;
   --text: #ececf2;
   --muted: #9295a6;
-  --subtle: #656979;
+  --subtle: #8e92a3;
   --accent: #b4a6ff;
   --accent-bg: #302942;
   --green: #72c6a0;
@@ -392,7 +392,6 @@ kbd {
 .primary kbd {
   color: inherit;
   border-color: currentColor;
-  opacity: 0.7;
 }
 .secondary {
   background: var(--surface);

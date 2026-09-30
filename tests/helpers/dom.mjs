@@ -12,6 +12,7 @@ export function domContainer(root) {
         tagName: match[1].toUpperCase(),
         id: attributes.id || "",
         value: "",
+        hidden: /\bhidden(?:\s|=|$)/.test(match[2]),
         isConnected: true,
         attributes,
         dataset: Object.fromEntries(Object.entries(attributes).filter(([key]) => key.startsWith("data-")).map(([key, value]) => [key.slice(5), value])),

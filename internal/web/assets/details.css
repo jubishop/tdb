@@ -20,7 +20,6 @@
   color: var(--subtle);
   border: 1px dashed var(--line);
   border-radius: 7px;
-  opacity: 0.6;
 }
 .dragging {
   opacity: 0.35;
