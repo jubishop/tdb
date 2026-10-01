@@ -76,17 +76,18 @@ export function options(values, selected) {
 export function replaceContents(root, html) {
   const active = document.activeElement;
   const focused = active !== root && root.contains(active) ? active : null;
-  const identity = focused
-    ? ["id", "name", "data-action", "data-id", "data-view", "data-transition", "href"]
-        .filter((key) => focused.getAttribute(key) !== null)
-        .map((key) => `[${key}="${CSS.escape(focused.getAttribute(key))}"]`)
-        .join("")
-    : "";
   root.innerHTML = html;
+  restoreFocus(root, focused);
+}
+
+export function restoreFocus(root, focused) {
   if (!focused) return;
-  const replacement = identity
-    ? root.querySelector(focused.tagName.toLowerCase() + identity)
-    : null;
+  const identity = ["id", "name", "data-action", "data-id", "data-view", "data-transition", "href"]
+    .filter((key) => focused.getAttribute(key) !== null)
+    .map((key) => `[${key}="${CSS.escape(focused.getAttribute(key))}"]`)
+    .join("");
+  const replacement = root.contains(focused) ? focused
+    : identity ? root.querySelector(focused.tagName.toLowerCase() + identity) : null;
   if (replacement) replacement.focus({ preventScroll: true });
   else {
     root.tabIndex = -1;

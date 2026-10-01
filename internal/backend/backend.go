@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -111,9 +113,9 @@ func Connect(ctx context.Context, opts Options) (*Backend, error) {
 			}
 			return &Backend{URL: u, Token: opts.Token, Project: project}, nil
 		}
-		// A responding server owns this port even if its API is incompatible or protected.
-		if _, networkError := err.(*url.Error); !networkError {
-			return nil, err
+		// Only a refused connection establishes that the recorded server is gone.
+		if !errors.Is(err, syscall.ECONNREFUSED) {
+			return nil, fmt.Errorf("inspect existing td server on port %d: %w", port.Port, err)
 		}
 	}
 	token := opts.Token

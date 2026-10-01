@@ -160,6 +160,66 @@ func TestDiscoveryRejectsWrongProject(t *testing.T) {
 	}
 }
 
+func TestDiscoveryPreservesServerOnNetworkFailure(t *testing.T) {
+	for _, failure := range []string{"dropped response", "response timeout"} {
+		t.Run(failure, func(t *testing.T) {
+			td, root := fakeTD(t)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if failure == "response timeout" {
+					<-r.Context().Done()
+					return
+				}
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				_ = conn.Close()
+			}))
+			defer ts.Close()
+			port := ts.Listener.Addr().(*net.TCPAddr).Port
+			data, _ := json.Marshal(portInfo{Port: port, PID: os.Getpid()})
+			path := filepath.Join(root, ".todos", "serve-port")
+			if err := os.WriteFile(path, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			b, err := Connect(context.Background(), Options{TDPath: td, WorkDir: root, Interval: time.Second})
+			if b != nil {
+				t.Cleanup(b.Close)
+			}
+			if err == nil || b != nil {
+				t.Fatalf("started a replacement for a responding server: backend=%v error=%v", b != nil, err)
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || string(after) != string(data) {
+				t.Fatalf("changed the existing server's discovery file: %s, %v", after, err)
+			}
+		})
+	}
+}
+
+func TestDiscoveryReplacesRefusedConnection(t *testing.T) {
+	td, root := fakeTD(t)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	_ = listener.Close()
+	data, _ := json.Marshal(portInfo{Port: port, PID: os.Getpid()})
+	if err := os.WriteFile(filepath.Join(root, ".todos", "serve-port"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	b, err := Connect(context.Background(), Options{TDPath: td, WorkDir: root, Interval: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(b.Close)
+	if b.Done() == nil || b.Project.Path != root {
+		t.Fatal("did not start an owned backend for the stale port file")
+	}
+}
+
 // TestTDProcess is a fake td binary in a child process, not a database implementation.
 func TestTDProcess(t *testing.T) {
 	if os.Getenv("TDB_TEST_PROCESS") != "1" {

@@ -7,11 +7,18 @@ export function domContainer(root) {
   const parse = () => {
     controls = [...markup.matchAll(/<(button|input|textarea|div|p)\b([^>]*)>/g)].map((match) => {
       const attributes = Object.fromEntries([...match[2].matchAll(/([\w-]+)="([^"]*)"/g)].map((entry) => [entry[1], entry[2]]));
+      // HTML parsing removes one leading newline before decoding textarea text.
+      const textareaValue = match[1] === "textarea"
+        ? markup.slice(match.index + match[0].length).split("</textarea>")[0]
+          .replace(/\r\n?/g, "\n").replace(/^\n/, "")
+          .replace(/&(amp|lt|gt|quot|#39);/g, (_, name) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[name])
+        : "";
       const control = {
         ...element(),
         tagName: match[1].toUpperCase(),
         id: attributes.id || "",
-        value: "",
+        value: textareaValue,
+        defaultValue: textareaValue,
         hidden: /\bhidden(?:\s|=|$)/.test(match[2]),
         isConnected: true,
         attributes,

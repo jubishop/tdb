@@ -17,6 +17,7 @@ import {
   formValues,
   toast,
   replaceContents,
+  restoreFocus,
 } from "./ui.js";
 
 export function createPanels(state, refresh, boardPosition) {
@@ -24,9 +25,19 @@ export function createPanels(state, refresh, boardPosition) {
   const modal = document.querySelector("#modal");
   let request = 0;
   let modalSubmit;
+  let modalFocus;
 
   modal.addEventListener("cancel", (event) => {
     if (!mayCloseModal()) event.preventDefault();
+  });
+  modal.addEventListener("close", () => {
+    if (modal.open) return;
+    const previous = modalFocus;
+    modalFocus = null;
+    if (!previous || (document.activeElement !== document.body && !modal.contains(document.activeElement))) return;
+    const root = previous.root === drawer && drawer.hidden
+      ? document.querySelector("#content") : previous.root;
+    restoreFocus(root, previous.focused);
   });
 
   function modalDirty() {
@@ -98,6 +109,13 @@ export function createPanels(state, refresh, boardPosition) {
   function showModal(title, contents, onSubmit, submitLabel = "Save") {
     if (drawerBusy()) return;
     if (modal.open && !mayCloseModal()) return;
+    if (!modal.open) {
+      const focused = document.activeElement;
+      const root = ["#drawer", "#content", "#navigation", "#boards"]
+        .map((selector) => document.querySelector(selector))
+        .find((node) => node.contains(focused)) || document.body;
+      modalFocus = { root, focused };
+    }
     modalSubmit = onSubmit;
     modal.innerHTML = `<form id="modal-form"><header class="modal-header"><h2 id="modal-title">${esc(title)}</h2><button type="button" class="icon-button" data-action="close-modal" aria-label="Close dialog">×</button></header><div class="modal-body">${contents}<p id="modal-error" class="form-error" role="alert" hidden></p></div><footer class="modal-footer"><button type="button" class="quiet" data-action="close-modal">Cancel</button>${onSubmit ? `<button class="primary" type="submit">${esc(submitLabel)}</button>` : ""}</footer></form>`;
     if (!modal.open) modal.showModal();
@@ -234,7 +252,7 @@ export function createPanels(state, refresh, boardPosition) {
         `<form id="issue-form" class="editor-form"><div class="detail-body"><h2>${original.id ? "Edit task" : "Create a task"}</h2>${note ? `<p class="notice">${esc(note)}</p>` : ""}<p id="draft-warning" class="notice" hidden>This task has changed. Your draft is preserved. Saving will open a comparison.</p>
       <label>Title<input name="title" value="${esc(values.title)}" minlength="${state.project.title_min_length}" maxlength="${state.project.title_max_length}" required autofocus><span class="field-hint">${state.project.title_min_length}–${state.project.title_max_length} characters</span></label>
       <div class="form-grid"><label>Type<select name="type">${options(types, values.type)}</select></label><label>Priority<select name="priority">${options(priorities, values.priority)}</select></label></div>
-      ${["description", "acceptance"].map((key) => `<div class="markdown-editor"><div class="editor-label"><label for="edit-${key}">${key === "description" ? "Description" : "Acceptance criteria"}</label><button type="button" class="quiet" data-action="preview" data-field="${key}">Preview</button></div><textarea id="edit-${key}" name="${key}" rows="${key === "description" ? 8 : 5}" placeholder="Write Markdown…">${esc(values[key])}</textarea><div id="preview-${key}" class="markdown markdown-preview" hidden></div></div>`).join("")}
+      ${["description", "acceptance"].map((key) => `<div class="markdown-editor"><div class="editor-label"><label for="edit-${key}">${key === "description" ? "Description" : "Acceptance criteria"}</label><button type="button" class="quiet" data-action="preview" data-field="${key}">Preview</button></div><textarea id="edit-${key}" name="${key}" rows="${key === "description" ? 8 : 5}" placeholder="Write Markdown…">\n${esc(values[key])}</textarea><div id="preview-${key}" class="markdown markdown-preview" hidden></div></div>`).join("")}
       <label>Labels<span class="field-hint">Separate labels with commas</span><input name="labels" value="${esc((values.labels || []).join(", "))}" placeholder="frontend, release"></label>
       <label>Parent task / epic<input name="parent_id" value="${esc(values.parent_id)}" placeholder="Find a task or enter its ID" data-issue-search="parent-options" list="parent-options" autocomplete="off"><datalist id="parent-options"></datalist></label>
       <details class="advanced"><summary>More fields</summary><div class="form-grid"><label>Points<select name="points">${options(["0", "1", "2", "3", "5", "8", "13", "21"], String(values.points || 0))}</select></label><label>Sprint<input name="sprint" value="${esc(values.sprint)}"></label><label>Due date<input name="due_date" type="date" value="${esc(values.due_date)}"></label><label>Defer until<input name="defer_until" type="date" value="${esc(values.defer_until)}"></label></div><label class="check-label"><input name="minor" type="checkbox" ${values.minor ? "checked" : ""}>Minor task</label></details>
@@ -390,7 +408,7 @@ export function createPanels(state, refresh, boardPosition) {
   function boardForm(board) {
     showModal(
       board ? "Edit board" : "Create a saved board",
-      `<label>Name<input name="name" value="${esc(board?.name)}" required></label><label>TDQ query<span class="field-hint">Leave empty to include all tasks. Example: priority &lt;= P1</span><textarea name="query" rows="4" placeholder="type = feature AND status != closed">${esc(board?.query)}</textarea></label>${board ? `<button type="button" class="quiet danger-text" data-action="delete-board" data-id="${esc(board.id)}">Delete board…</button>` : ""}`,
+      `<label>Name<input name="name" value="${esc(board?.name)}" required></label><label>TDQ query<span class="field-hint">Leave empty to include all tasks. Example: priority &lt;= P1</span><textarea name="query" rows="4" placeholder="type = feature AND status != closed">\n${esc(board?.query)}</textarea></label>${board ? `<button type="button" class="quiet danger-text" data-action="delete-board" data-id="${esc(board.id)}">Delete board…</button>` : ""}`,
       async (form) => {
         const data = await api(board ? `/boards/${board.id}` : "/boards", {
           method: board ? "PATCH" : "POST",
