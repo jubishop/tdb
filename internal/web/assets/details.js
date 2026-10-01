@@ -443,7 +443,17 @@ export function createPanels(state, refresh, boardPosition) {
       const preview = drawer.querySelector(`#preview-${field}`);
       const textarea = drawer.querySelector(`[name="${field}"]`);
       if (preview.hidden) {
-        preview.innerHTML = await markdown(textarea.value);
+        const text = textarea.value;
+        const current = () => textarea.isConnected && textarea.value === text;
+        let rendered;
+        try {
+          rendered = await markdown(text);
+        } catch (error) {
+          if (current()) throw error;
+          return;
+        }
+        if (!current()) return;
+        preview.innerHTML = rendered;
         preview.hidden = false;
         textarea.hidden = true;
         target.textContent = "Write";
