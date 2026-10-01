@@ -3,5 +3,6 @@
   "source": "https://github.com/jubishop/project-starter",
   "source_ref": "4e52dcb7dcfb51bd598a162b1a61a848a4f2b727",
   "tested_qmd": "2.8.3",
-  "tested_td": "0.65.0"
+  "tested_td": "devel+main.aba5042",
+  "task_tracking_source_ref": "7c19548bdcba44007f4e841afc046ea738913edd"
 }
