@@ -79,7 +79,7 @@ Running or building tdb does not require Node.js.
 
 ## License
 
-[MIT](LICENSE). Browser code was extracted from jubishop/td at commit
-`998049ea9777a4b37d54773ddc28cb4d7241610d`. The original td license is retained.
+[MIT](LICENSE). Browser code was extracted from
+[td](https://github.com/marcus/td). The original td license is retained.
 The repository foundation uses Project Starter under its
 [MIT notice](LICENSE.project-starter).
