@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Application checks; deliberately excluded from routine foundation checks."""
+"""Run tdb's tooling tests and application checks; bin/check --full calls this after the foundation checks."""
 import os
 from pathlib import Path
 import re
@@ -9,6 +9,9 @@ import sys
 root = Path(__file__).resolve().parents[1]
 env = dict(os.environ, GOWORK="off")
 try:
+    # Tooling tests run first, with the caller's environment.
+    subprocess.run([sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_app_checks.py", "-v"],
+                   cwd=root, check=True)
     version = subprocess.check_output(["go", "version"], cwd=root, env=env, text=True).strip()
     if not re.search(r"\bgo1\.27\.\d+\b", version):
         raise RuntimeError("Go 1.27.x is required; detected " + version + ". Select a Go 1.27 toolchain.")

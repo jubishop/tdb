@@ -71,8 +71,10 @@ make build
 
 Use `td` for local work and GitHub Issues for shared scope. See the
 [development workflow](docs/development-workflow.md) and
-[task tracking guide](docs/task-tracking.md). Routine `bin/check` validates the
-foundation only; `bin/check --full` also runs Go tests, vet, formatting, and build.
+[task tracking guide](docs/foundation/task-tracking.md). Routine `bin/check`
+validates the foundation only; `bin/check --full` also runs
+`bin/check-application`: tooling tests, browser event tests, Go tests, vet,
+formatting, and build.
 The frontend is plain JavaScript and CSS with no build step. Application checks
 use Node.js 24.x for browser event regression tests, with no npm dependencies.
 Running or building tdb does not require Node.js.

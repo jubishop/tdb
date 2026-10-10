@@ -1,4 +1,5 @@
-"""Verify the adopted check boundary without starting application tools."""
+"""Verify the application checks and Make targets without starting application tools."""
+import json
 import os
 from pathlib import Path
 import shutil
@@ -45,36 +46,57 @@ else:
             self.assertEqual((root / "prefix/bin/tdb").read_text(), "test executable")
             self.assertIn("test -race . ./internal/... GOWORK=off", (root / "calls").read_text())
 
-    def test_modes_and_failures(self):
+    def test_tooling_tests_run_first_and_failures_stop_later_checks(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / "bin").mkdir()
-            (root / "tests").mkdir()
-            (root / "tests/test_app_checks.py").write_text("import unittest\nclass Stub(unittest.TestCase):\n    def test_ok(self): pass\n")
-            shutil.copy2(SOURCE / "bin/check", root / "bin/check")
-            (root / "bin/_checks.py").write_text("import os\ndef main(): return int(os.environ.get('FOUNDATION_FAILURE', '0'))\n")
-            app = root / "bin/check-app"
-            app.write_text("#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\nPath('invoked').touch()\nraise SystemExit(int(os.environ.get('APPLICATION_FAILURE', '0')))\n")
-            app.chmod(0o755)
-            for args in ([], ["--documents-only"]):
-                subprocess.run([str(root / "bin/check"), *args], cwd=root, check=True)
-                self.assertFalse((root / "invoked").exists())
-            subprocess.run([str(root / "bin/check"), "--full"], cwd=root, check=True)
-            self.assertTrue((root / "invoked").exists())
-            (root / "invoked").unlink()
-            env = dict(os.environ, FOUNDATION_FAILURE="3")
-            result = subprocess.run([str(root / "bin/check"), "--full"], cwd=root, env=env)
-            self.assertEqual(result.returncode, 3)
-            self.assertFalse((root / "invoked").exists())
-            result = subprocess.run([str(root / "bin/check"), "--full"], cwd=root, env=dict(os.environ, APPLICATION_FAILURE="7"))
-            self.assertEqual(result.returncode, 7)
+            for name in ("bin", "internal", "tests", "tools"):
+                (root / name).mkdir()
+            shutil.copy2(SOURCE / "bin/check-application", root / "bin/check-application")
+            (root / "main.go").touch()
+            (root / "tests/board-moves.test.mjs").touch()
+            (root / "tests/test_app_checks.py").write_text(
+                "import json, os, unittest\nfrom pathlib import Path\n"
+                "class Tooling(unittest.TestCase):\n"
+                "    def test_tooling(self):\n"
+                "        with Path('calls').open('a') as f: f.write(json.dumps(['tooling', os.environ.get('GOWORK')]) + '\\n')\n"
+                "        self.assertNotIn('TOOLING_FAILURE', os.environ)\n")
+            for name in ("go", "gofmt", "node"):
+                tool = root / "tools" / name
+                tool.write_text("#!/usr/bin/env python3\nimport json, os, sys\nfrom pathlib import Path\n"
+                                "with Path('calls').open('a') as f: f.write(json.dumps([Path(sys.argv[0]).name, *sys.argv[1:2], os.environ.get('GOWORK')]) + '\\n')\n"
+                                "if sys.argv[1:] == ['version']: print('go version go1.27.1 test/test')\n"
+                                "if sys.argv[1:] == ['--version']: print('v24.20.0')\n"
+                                "if sys.argv[1:2] == [os.environ.get('FAIL_COMMAND')]: sys.exit(7)\n")
+                tool.chmod(0o755)
+            env = {key: value for key, value in os.environ.items() if key != "GOWORK"}
+            env["PATH"] = str(root / "tools") + os.pathsep + os.environ["PATH"]
+
+            def check(**extra):
+                (root / "calls").unlink(missing_ok=True)
+                result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, **extra),
+                                        capture_output=True, text=True)
+                return result, [json.loads(line) for line in (root / "calls").read_text().splitlines()]
+
+            result, calls = check()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            # Tooling tests keep the caller's environment; application tools run with GOWORK=off.
+            self.assertEqual(calls, [["tooling", None], ["go", "version", "off"], ["node", "--version", "off"],
+                                     ["gofmt", "-l", "off"], ["node", "--test", "off"], ["go", "test", "off"],
+                                     ["go", "vet", "off"], ["go", "build", "off"]])
+            result, calls = check(TOOLING_FAILURE="1")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(calls, [["tooling", None]])
+            result, calls = check(FAIL_COMMAND="test")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(calls[-1], ["go", "test", "off"])
 
     def test_application_scope_and_toolchain(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for name in ("bin", "internal", "tests", "worktrees/nested", "tools"):
                 (root / name).mkdir(parents=True)
-            shutil.copy2(SOURCE / "bin/check-app", root / "bin/check-app")
+            shutil.copy2(SOURCE / "bin/check-application", root / "bin/check-application")
+            (root / "tests/test_app_checks.py").write_text("import unittest\nclass Stub(unittest.TestCase):\n    def test_ok(self): pass\n")
             (root / "main.go").touch()
             (root / "internal/app.go").touch()
             (root / "tests/board-moves.test.mjs").touch()
@@ -86,26 +108,27 @@ else:
                 tool.chmod(0o755)
             env = dict(os.environ, PATH=str(root / "tools") + os.pathsep + os.environ["PATH"])
             for _ in range(2):
-                subprocess.run([str(root / "bin/check-app")], cwd=root, env=env, check=True)
+                result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertNotIn("worktrees", (root / "calls").read_text())
                 self.assertIn("./internal/...", (root / "calls").read_text())
                 self.assertIn("board-moves.test.mjs", (root / "calls").read_text())
                 shutil.rmtree(root / "worktrees", ignore_errors=True)
             (root / "calls").unlink()
-            result = subprocess.run([str(root / "bin/check-app")], cwd=root, env=dict(env, FAKE_GO_VERSION="go version go1.26.0 test/test"), capture_output=True, text=True)
+            result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, FAKE_GO_VERSION="go version go1.26.0 test/test"), capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("Go 1.27.x", result.stderr)
             self.assertNotIn("test", (root / "calls").read_text())
             (root / "calls").unlink()
-            result = subprocess.run([str(root / "bin/check-app")], cwd=root, env=dict(env, FAKE_NODE_VERSION="v22.0.0"), capture_output=True, text=True)
+            result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, FAKE_NODE_VERSION="v22.0.0"), capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("Node.js 24.x", result.stderr)
             self.assertNotIn("--test", (root / "calls").read_text())
-            result = subprocess.run([str(root / "bin/check-app")], cwd=root, env=dict(env, BAD_FORMAT="1"), capture_output=True)
+            result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, BAD_FORMAT="1"), capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             (root / "calls").unlink()
             (root / "tests/board-moves.test.mjs").unlink()
-            result = subprocess.run([str(root / "bin/check-app")], cwd=root, env=env, capture_output=True, text=True)
+            result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=env, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("No browser event tests", result.stderr)
             self.assertNotIn("--test", (root / "calls").read_text())
