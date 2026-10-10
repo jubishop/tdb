@@ -32,11 +32,11 @@ Project Starter manages this block; add project rules after it.
 
 ## Application
 
-Go 1.27.x; plain JavaScript and CSS embedded under `internal/web/assets/`.
+Go 1.27 or newer; plain JavaScript and CSS embedded under `internal/web/assets/`.
 Use `make build` and `make install` for the local executable. Run
 `bin/check-application` for tooling tests, browser event tests, Go tests, vet,
 formatting, and build after code changes. Application checks require Node.js
-24.x; no npm packages are needed. Use `bin/check --full`, which runs it after
+24 or newer; no npm packages are needed. Use `bin/check --full`, which runs it after
 the foundation checks, for the full delivery gate.
 
 After committing and successfully pushing functional changes, run `make install`

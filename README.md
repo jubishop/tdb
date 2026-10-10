@@ -7,7 +7,7 @@ The interface is embedded in one Go executable. Node is not needed.
 ## Install and run
 
 Requires macOS or Linux and `td` v0.66.0 or later on PATH. To build from source,
-use Go 1.27.x:
+use Go 1.27 or newer:
 
 ```sh
 go install github.com/jubishop/tdb@latest
@@ -76,7 +76,8 @@ validates the foundation only; `bin/check --full` also runs
 `bin/check-application`: tooling tests, browser event tests, Go tests, vet,
 formatting, and build.
 The frontend is plain JavaScript and CSS with no build step. Application checks
-use Node.js 24.x for browser event regression tests, with no npm dependencies.
+use Node.js 24 or newer for browser event regression tests, with no npm
+dependencies.
 Running or building tdb does not require Node.js.
 
 ## License

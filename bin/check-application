@@ -13,11 +13,14 @@ try:
     subprocess.run([sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_app_checks.py", "-v"],
                    cwd=root, check=True)
     version = subprocess.check_output(["go", "version"], cwd=root, env=env, text=True).strip()
-    if not re.search(r"\bgo1\.27\.\d+\b", version):
-        raise RuntimeError("Go 1.27.x is required; detected " + version + ". Select a Go 1.27 toolchain.")
+    found = re.search(r"\bgo(\d+)\.(\d+)", version)
+    if not found or tuple(map(int, found.groups())) < (1, 27):
+        raise RuntimeError("Go 1.27 or newer is required; detected " + version + ". Select the latest stable Go toolchain.")
     node_version = subprocess.check_output(["node", "--version"], cwd=root, env=env, text=True).strip()
-    if not re.fullmatch(r"v24\.\d+\.\d+", node_version):
-        raise RuntimeError("Node.js 24.x is required for application checks; detected " + node_version + ".")
+    found = re.fullmatch(r"v(\d+)\.\d+\.\d+", node_version)
+    if not found or int(found.group(1)) < 24:
+        raise RuntimeError("Node.js 24 or newer is required for application checks; detected " + node_version
+                           + ". Select the latest LTS (lts/*) with your Node.js version manager.")
     sources = sorted(root.glob("*.go")) + sorted((root / "internal").rglob("*.go"))
     unformatted = subprocess.check_output(["gofmt", "-l", *map(str, sources)], cwd=root, env=env, text=True)
     if unformatted.strip():

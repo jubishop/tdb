@@ -31,9 +31,10 @@ checks, formatting, browser event tests, Go race tests, vet, and build.
 
 ## Runtime and toolchain versions
 
-tdb supports macOS and Linux with Go 1.27.x, declared in `go.mod` and
-enforced by `bin/check-application` and the Make targets. Application checks
-use Node.js 24.x; CI selects both with setup actions. tdb needs td v0.66.0 or
+tdb supports macOS and Linux with Go 1.27 or newer: `go.mod` declares the
+minimum, and `bin/check-application` and the Make targets reject older
+releases. Application checks use Node.js 24 or newer. CI installs the latest
+stable Go and the latest Node.js LTS on every run. tdb needs td v0.66.0 or
 later at runtime. See [application commands](#application-commands) and the
 [version policy](foundation/engineering-policy.md#runtime-and-toolchain-versions).
 
@@ -47,12 +48,13 @@ nonfunctional. Follow the
 
 ## Application commands
 
-The application supports macOS and Linux with Go 1.27.x. The compiled binary
-has no JavaScript runtime dependency. `go.mod` declares the compiler baseline;
-CI selects it with setup-go. Application checks also use Node.js 24.x and its
-built-in test runner to exercise browser events and API requests without npm
-dependencies. `bin/check-application` rejects unsupported Go and Node.js
-versions before application validation starts. Building and running tdb does
+The application supports macOS and Linux with Go 1.27 or newer. The compiled
+binary has no JavaScript runtime dependency. `go.mod` declares the compiler
+baseline; CI installs the latest stable Go with setup-go. Application checks
+also use Node.js 24 or newer and its built-in test runner to exercise browser
+events and API requests without npm dependencies. `bin/check-application`
+rejects Go and Node.js versions below those minimums before application
+validation starts. Building and running tdb does
 not need Node.js.
 The Make targets also check Go before building, installing, or testing.
 

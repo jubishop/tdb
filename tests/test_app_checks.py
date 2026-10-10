@@ -32,17 +32,20 @@ else:
             go.chmod(0o755)
             env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"])
             for target in ("build", "install", "test"):
-                for version in ("go1.26.5", "go1.28.0"):
+                for version in ("go1.26.5", "go1.3.0"):
                     with self.subTest(target=target, version=version):
                         result = subprocess.run(["make", target, "PREFIX=" + str(root / "prefix")], cwd=root,
                                                 env=dict(env, FAKE_GO_VERSION=version), capture_output=True, text=True)
                         self.assertNotEqual(result.returncode, 0)
-                        self.assertIn("Go 1.27.x", result.stderr)
+                        self.assertIn("Go 1.27 or newer", result.stderr)
                         self.assertFalse((root / "calls").exists())
                         self.assertFalse((root / "prefix/bin/tdb").exists())
-            for target in ("build", "install", "test"):
-                subprocess.run(["make", target, "PREFIX=" + str(root / "prefix")], cwd=root,
-                               env=dict(env, FAKE_GO_VERSION="go1.27.1"), check=True, capture_output=True)
+            for version in ("go1.27.1", "go1.28.0", "go1.30rc1"):
+                for target in ("build", "install", "test"):
+                    with self.subTest(target=target, version=version):
+                        result = subprocess.run(["make", target, "PREFIX=" + str(root / "prefix")], cwd=root,
+                                                env=dict(env, FAKE_GO_VERSION=version), capture_output=True, text=True)
+                        self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((root / "prefix/bin/tdb").read_text(), "test executable")
             self.assertIn("test -race . ./internal/... GOWORK=off", (root / "calls").read_text())
 
@@ -115,15 +118,27 @@ else:
                 self.assertIn("board-moves.test.mjs", (root / "calls").read_text())
                 shutil.rmtree(root / "worktrees", ignore_errors=True)
             (root / "calls").unlink()
-            result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, FAKE_GO_VERSION="go version go1.26.0 test/test"), capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("Go 1.27.x", result.stderr)
-            self.assertNotIn("test", (root / "calls").read_text())
-            (root / "calls").unlink()
-            result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, FAKE_NODE_VERSION="v22.0.0"), capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("Node.js 24.x", result.stderr)
-            self.assertNotIn("--test", (root / "calls").read_text())
+            for go, node in (("go1.28.0", "v26.1.0"), ("go1.30.2", "v28.0.0")):
+                with self.subTest(go=go, node=node):
+                    newer = dict(env, FAKE_GO_VERSION=f"go version {go} test/test", FAKE_NODE_VERSION=node)
+                    result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=newer, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("build", (root / "calls").read_text())
+                    (root / "calls").unlink()
+            for go in ("go1.26.0", "go1.3.0"):
+                with self.subTest(go=go):
+                    result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, FAKE_GO_VERSION=f"go version {go} test/test"), capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Go 1.27 or newer", result.stderr)
+                    self.assertNotIn("test", (root / "calls").read_text())
+                    (root / "calls").unlink()
+            for node in ("v22.0.0", "v23.9.0"):
+                with self.subTest(node=node):
+                    result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, FAKE_NODE_VERSION=node), capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Node.js 24 or newer", result.stderr)
+                    self.assertNotIn("--test", (root / "calls").read_text())
+                    (root / "calls").unlink()
             result = subprocess.run([str(root / "bin/check-application")], cwd=root, env=dict(env, BAD_FORMAT="1"), capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             (root / "calls").unlink()

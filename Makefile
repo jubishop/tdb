@@ -12,7 +12,8 @@ check:
 	bin/check --full
 check-go:
 	@version="$$(GOWORK=off go env GOVERSION)" || exit $$?; \
+	minor="$${version#go1.}"; minor="$${minor%%[!0-9]*}"; \
 	case "$$version" in \
-		go1.27.[0-9]*) ;; \
-		*) echo "Go 1.27.x is required; detected $$version. Select a Go 1.27 toolchain." >&2; exit 1 ;; \
-	esac
+		go1.[0-9]*) [ "$$minor" -ge 27 ] && exit 0 ;; \
+	esac; \
+	echo "Go 1.27 or newer is required; detected $$version. Select the latest stable Go toolchain." >&2; exit 1
