@@ -59,3 +59,6 @@ review records or convert them into ordinary memory pages.
 ## Active pages
 
 Add links as durable knowledge is established. Do not seed invented memories.
+
+- [Keep tdb single-project](single-project-scope.md): cross-project views belong
+  on td sync, not in tdb.
